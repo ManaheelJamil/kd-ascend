@@ -57,6 +57,25 @@ Open http://localhost:3000.
 
 The first time, the login page shows **"Create the first admin"**. Use it once to make your admin account; after that the setup page is locked by the rules. To add more admins later, add a document in Firestore → `admins` whose ID is that person's Auth UID (fields: `name`, `email`).
 
+## Email codes server (free — no Blaze plan)
+
+The mobile app's real email codes (sign-up "Verify Your Email" and "Forgot Password → Via Email") are sent by
+this project's API route `src/app/api/fn/[name]/route.ts`. It needs three server-only settings:
+
+| Variable | Where to get it |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase console → Project settings → **Service accounts** → **Generate new private key** → paste the whole JSON file |
+| `SMTP_USER` | The Gmail that sends codes, e.g. `manaheeljamil20@gmail.com` |
+| `SMTP_PASS` | That Gmail's 16-letter **App Password** (https://myaccount.google.com/apppasswords — needs 2-Step Verification) |
+
+Optional: `MAIL_FROM` (e.g. `KD Ascend <you@gmail.com>`), `APP_NAME`.
+
+Deploy on Vercel (free): https://vercel.com → **Add New → Project** → import the `kd-ascend-admin` GitHub repo →
+**Environment Variables** → add the three above → **Deploy**. Check it at `https://<your-app>.vercel.app/api/fn/health` (should show `"ok": true`).
+Then set `apiBaseUrl` in the mobile app's `src/config.ts` to that address and rebuild the APK.
+
+⚠️ Never commit the service-account JSON or the App Password. They only go in Vercel's Environment Variables (or `.env.local`, which git ignores).
+
 ## 4. Put it online (optional)
 
 Deploy to Vercel: import the folder, add the same `NEXT_PUBLIC_…` values as Environment Variables, deploy. Then add the Vercel domain in Firebase → Authentication → Settings → **Authorized domains**.
