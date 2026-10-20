@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+*.log
+.env*
+
+# Firebase config files (download from the Firebase console — keep them out of git if the repo is public)
+google-services.json
+GoogleService-Info.plist
+
+functions/lib/
+functions/node_modules/
+functions/.secret.local
+.firebase/

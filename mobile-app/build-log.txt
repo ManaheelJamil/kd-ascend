@@ -1,0 +1,19 @@
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Settings file 'C:\Users\MWRIK\Downloads\hireloop-auth-app\hireloop-app\android\settings.gradle' line: 21
+
+* What went wrong:
+Error resolving plugin [id: 'com.facebook.react.settings']
+> A build operation failed.
+      Could not read workspace metadata from C:\Users\MWRIK\.gradle\caches\8.14.3\transforms\c82eb49d1e40a7062eeb6dcb22a32921\metadata.bin
+   > Could not read workspace metadata from C:\Users\MWRIK\.gradle\caches\8.14.3\transforms\c82eb49d1e40a7062eeb6dcb22a32921\metadata.bin
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s

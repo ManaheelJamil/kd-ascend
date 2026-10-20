@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Identity documents and bank statements: private to their owner, 50MB max.
+    match /users/{uid}/{folder}/{file} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && folder in ['identity', 'bank-statement']
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png)|application/pdf|video/mp4');
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function unchanged(field) {
+        return request.resource.data.get(field, null) == resource.data.get(field, null);
+      }
+      // phoneVerified may only become true once Firebase has linked that exact number.
+      function phoneOk() {
+        return request.resource.data.phoneVerified == false
+          || request.auth.token.phone_number == request.resource.data.phone;
+      }
+      // Clients may only move the account from "incomplete" to "under_review".
+      function statusOk() {
+        return unchanged('status')
+          || (resource.data.status == 'incomplete' && request.resource.data.status == 'under_review');
+      }
+
+      allow read: if isOwner();
+
+      allow create: if isOwner()
+        && request.resource.data.uid == uid
+        && request.resource.data.emailVerified == false
+        && request.resource.data.phoneVerified == false
+        && request.resource.data.status == 'incomplete';
+
+      allow update: if isOwner()
+        && unchanged('uid')
+        && unchanged('email')
+        && unchanged('emailVerified')   // set only by the verifyEmailCode function
+        && (unchanged('phone') || resource.data.phoneVerified == false)
+        && (unchanged('phoneVerified') || phoneOk())
+        && statusOk();
+
+      allow delete: if false;
+    }
+
+    // One-time codes and reset tokens: Cloud Functions only.
+    match /otp/{id} {
+      allow read, write: if false;
+    }
+    match /resetTokens/{id} {
+      allow read, write: if false;
+    }
+  }
+}

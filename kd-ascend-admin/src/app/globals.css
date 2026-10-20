@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+
+/* Tokens from the KD Ascend admin Figma frames. */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, 'Segoe UI', Arial, sans-serif;
+
+  --color-brand: #ff7d4d;
+  --color-brand-light: #ff9b73;
+  --color-ink: #060702;
+  --color-muted: #5e5e5e;
+  --color-page: #f9fafb;
+  --color-line: #f3f4f6;
+  --color-field: #e5e7eb;
+  --color-dash: #d1d5dc;
+  --color-tile: #f6f6f6;
+  --color-search: #f5f5f7;
+  --color-success: #077d37;
+  --color-danger: #fb2c36;
+  --color-navy: #1e1548;
+  --color-navy-2: #2d2060;
+  --color-penalty: #f54900;
+  --color-star: #ff8241;
+
+  --radius-card: 17.5px;
+  --radius-control: 13.5px;
+
+  --shadow-brand: 0 4px 6px rgb(255 125 77 / 0.3), 0 10px 15px rgb(255 125 77 / 0.3);
+}
+
+html,
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+}
+
+/* Native date / select controls pick up the brand colour. */
+input,
+select,
+textarea {
+  accent-color: var(--color-brand);
+}
+
+/* Hide the browser's own calendar button; our icon opens the picker. */
+input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}

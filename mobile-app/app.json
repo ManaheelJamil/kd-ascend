@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "KD Ascend",
+    "slug": "hireloop",
+    "scheme": "hireloop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "backgroundColor": "#242239",
+    "splash": {
+      "image": "./assets/figma/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#242239"
+    },
+    "ios": {
+      "bundleIdentifier": "com.hireloop.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.hireloop.app",
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "resize",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "expo-font",
+      "expo-document-picker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/figma/logo.png",
+          "imageWidth": 220,
+          "backgroundColor": "#242239"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBFunctions", "RNFBStorage"]
+          }
+        }
+      ]
+    ]
+  }
+}
