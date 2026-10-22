@@ -18,6 +18,8 @@ type State = {
   logout: () => Promise<void>;
   /** One-time setup: creates the very first admin account. */
   createFirstAdmin: (name: string, email: string, password: string) => Promise<void>;
+  /** Updates the signed-in admin's display name (and the header) after a save in Settings. */
+  setAdminProfile: (p: Partial<AdminProfile>) => void;
 };
 
 const Ctx = createContext<State | null>(null);
@@ -32,7 +34,8 @@ async function loadAdmin(user: User): Promise<AdminProfile | null> {
   const snap = await getDoc(doc(db, 'admins', user.uid));
   if (!snap.exists()) return null;
   const data = snap.data() as { name?: string; email?: string };
-  return { name: data.name || 'Admin User', email: data.email || user.email || '' };
+  // Auth is the source of truth for the email (it changes after the admin confirms a new address).
+  return { name: data.name || 'Admin User', email: user.email || data.email || '' };
 }
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
@@ -87,9 +90,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     setAdmin({ name: name.trim(), email: cred.user.email ?? email });
   }, []);
 
+  const setAdminProfile = useCallback(
+    (p: Partial<AdminProfile>) => setAdmin((a) => (a ? { ...a, ...p } : a)),
+    [],
+  );
+
   const value = useMemo(
-    () => ({ loading, user, admin, login, logout, createFirstAdmin }),
-    [loading, user, admin, login, logout, createFirstAdmin],
+    () => ({ loading, user, admin, login, logout, createFirstAdmin, setAdminProfile }),
+    [loading, user, admin, login, logout, createFirstAdmin, setAdminProfile],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -123,6 +131,10 @@ export function authErrorMessage(e: unknown): string {
       return 'An account with this email already exists.';
     case 'auth/weak-password':
       return 'Password must be at least 8 characters.';
+    case 'auth/requires-recent-login':
+      return 'For security, please sign out and sign in again, then retry.';
+    case 'auth/operation-not-allowed':
+      return 'Email change is blocked in Firebase. In Authentication → Settings, allow email changes and try again.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
     case 'auth/invalid-api-key':
