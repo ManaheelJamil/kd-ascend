@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Ban, Clock, TrendingDown, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { ArrowRight, Building2, Clock, TrendingDown, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Card, ErrorNote, FullPageSpinner, cn } from '@/components/ui';
 import UsersTable from '@/components/UsersTable';
 import SignupsChart from '@/components/SignupsChart';
 import { useUsersData } from '@/context/UsersData';
 import { toDate } from '@/lib/format';
+import { subscribeCorporates } from '@/lib/corporates';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -59,6 +60,15 @@ function StatCard({
 
 export default function DashboardPage() {
   const { users, loading, error, counts } = useUsersData();
+  const [activeCorporates, setActiveCorporates] = useState(0);
+  useEffect(
+    () =>
+      subscribeCorporates(
+        (list) => setActiveCorporates(list.filter((c) => c.status === 'active').length),
+        () => setActiveCorporates(0),
+      ),
+    [],
+  );
 
   const { monthly, monthChange, newThisMonth } = useMemo(() => {
     const now = new Date();
@@ -101,9 +111,10 @@ export default function DashboardPage() {
           href="/users"
           note={<Trend value={newThisMonth} suffix=" this month" />}
         />
-        <StatCard icon={Clock} iconClass="bg-navy/10 text-navy" label="Pending Approval" value={counts.under_review} href="/users?status=under_review" />
+        <StatCard icon={Building2} iconClass="bg-navy/10 text-navy" label="Active Corporates" value={activeCorporates} href="/corporates" />
+        <StatCard icon={Clock} iconClass="bg-brand/10 text-brand" label="Pending Approval" value={counts.under_review} href="/users?status=under_review" />
         <StatCard icon={UserCheck} iconClass="bg-success/10 text-success" label="Active Users" value={counts.approved} href="/users?status=approved" />
-        <StatCard icon={Ban} iconClass="bg-danger/10 text-danger" label="Blacklisted" value={counts.blacklisted} href="/users?status=blacklisted" />
+
       </div>
 
       <div className="grid gap-[27px] xl:grid-cols-2">
