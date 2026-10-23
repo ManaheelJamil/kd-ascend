@@ -6,7 +6,6 @@ import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { CircleCheck, Eye, EyeOff, Pencil } from 'lucide-react';
 import { Button, Card, cn } from '@/components/ui';
 import { CorpField, CorpInput } from '@/components/CorporateBits';
-import EmailTemplatesCard from '@/components/EmailTemplatesCard';
 import { authErrorMessage, useAdminAuth } from '@/context/AdminAuth';
 import { auth, db } from '@/lib/firebase';
 import { imageFileToDataUrl, saveLogo, useBranding } from '@/lib/settings';
@@ -334,7 +333,6 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      <EmailTemplatesCard />
     </form>
   );
 }
