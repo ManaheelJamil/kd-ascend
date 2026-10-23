@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Bell, Menu, Search, User } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Bell, Menu, Search, User, X } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuth';
 import { useUsersData } from '@/context/UsersData';
 import { cn } from './ui';
@@ -12,11 +12,37 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
   const { admin } = useAdminAuth();
   const { counts } = useUsersData();
-  const [q, setQ] = useState('');
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const onUsers = pathname === '/users';
+  const urlQ = onUsers ? (params.get('q') ?? '') : '';
+  const [q, setQ] = useState(urlQ);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the box in step with the Users page search (?q=) and clear it on other pages.
+  useEffect(() => setQ(urlQ), [urlQ]);
+
+  const go = (value: string, replace: boolean) => {
+    const sp = new URLSearchParams(onUsers ? params.toString() : '');
+    if (value.trim()) sp.set('q', value.trim());
+    else sp.delete('q');
+    const url = `/users${sp.toString() ? `?${sp}` : ''}`;
+    if (replace) router.replace(url, { scroll: false });
+    else router.push(url);
+  };
+
+  // On the Users page the list filters while typing; elsewhere Enter opens Users with the search.
+  const change = (value: string) => {
+    setQ(value);
+    if (!onUsers) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => go(value, true), 250);
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(q.trim() ? `/users?q=${encodeURIComponent(q.trim())}` : '/users');
+    if (timer.current) clearTimeout(timer.current);
+    go(q, onUsers);
   };
 
   return (
@@ -34,10 +60,25 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
         <Search className="pointer-events-none absolute top-1/2 left-[22px] size-[22px] -translate-y-1/2 text-muted" />
         <input
           value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search anything..."
-          className="h-[65px] w-full rounded-card bg-search pr-6 pl-[63px] text-lg outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20"
+          onChange={(e) => change(e.target.value)}
+          placeholder="Search users by name, email, phone or NRIC..."
+          aria-label="Search users"
+          className="h-[65px] w-full rounded-card bg-search pr-14 pl-[63px] text-lg outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20"
         />
+        {q ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (timer.current) clearTimeout(timer.current);
+              setQ('');
+              if (onUsers) go('', true);
+            }}
+            aria-label="Clear search"
+            className="absolute top-1/2 right-4 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-white"
+          >
+            <X className="size-5" />
+          </button>
+        ) : null}
       </form>
 
       <div className="ml-auto flex items-center gap-[22px]">

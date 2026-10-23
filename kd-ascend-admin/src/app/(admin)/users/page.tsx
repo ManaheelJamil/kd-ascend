@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Check, Download, Filter, Search, UserPlus } from 'lucide-react';
+import { Check, Download, Filter, Search, UserPlus, X } from 'lucide-react';
 import { Avatar, Button, Card, ErrorNote, FullPageSpinner, PageTitle, cn } from '@/components/ui';
 import UsersTable from '@/components/UsersTable';
 import { useUsersData } from '@/context/UsersData';
@@ -62,13 +62,21 @@ function UsersPageInner() {
   const pathname = usePathname();
   const params = useSearchParams();
   const status = (params.get('status') as StatusFilter) || 'all';
-  const [q, setQ] = useState(params.get('q') ?? '');
+  const [q, setQState] = useState(params.get('q') ?? '');
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filterRef = useRef<HTMLDivElement>(null);
 
+  // The search text lives in the URL (?q=) so this box and the header search stay in sync.
   const qParam = params.get('q') ?? '';
-  useEffect(() => setQ(qParam), [qParam]);
+  useEffect(() => setQState(qParam), [qParam]);
+  const setQ = (next: string) => {
+    setQState(next);
+    const sp = new URLSearchParams(params.toString());
+    if (next.trim()) sp.set('q', next);
+    else sp.delete('q');
+    router.replace(`${pathname}${sp.toString() ? `?${sp}` : ''}`, { scroll: false });
+  };
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -90,7 +98,10 @@ function UsersPageInner() {
     () => users.filter((u) => (status === 'all' || u.status === status) && matches(u, q.trim())),
     [users, status, q],
   );
-  const pending = useMemo(() => users.filter((u) => u.status === 'under_review'), [users]);
+  const pending = useMemo(
+    () => users.filter((u) => u.status === 'under_review' && matches(u, q.trim())),
+    [users, q],
+  );
 
   const exportCsv = () => {
     const list = selected.size ? filtered.filter((u) => selected.has(u.uid)) : filtered;
@@ -128,7 +139,10 @@ function UsersPageInner() {
 
       {pending.length > 0 && (status === 'all' || status === 'under_review') ? (
         <Card accent className="p-6">
-          <h2 className="text-lg font-bold text-ink">Pending Approvals ({pending.length})</h2>
+          <h2 className="text-lg font-bold text-ink">
+            Pending Approvals ({pending.length})
+            {q.trim() ? <span className="ml-2 text-sm font-medium text-muted">matching “{q.trim()}”</span> : null}
+          </h2>
           <div className="mt-5 flex max-h-[330px] flex-col gap-[9px] overflow-y-auto">
             {pending.map((u) => (
               <div key={u.uid} className="flex items-center gap-[13px] rounded-control border border-line px-[15px] py-[14.5px]">
@@ -156,9 +170,19 @@ function UsersPageInner() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search users..."
-            className="h-[43px] w-full rounded-control border border-field pr-4 pl-10 text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
+            placeholder="Search by name, email, phone or NRIC..."
+            className="h-[43px] w-full rounded-control border border-field pr-10 pl-10 text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
           />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => setQ('')}
+              aria-label="Clear search"
+              className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-page"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
         <div className="relative" ref={filterRef}>
           <Button variant="outline" onClick={() => setFilterOpen((o) => !o)} className="h-[43px]">

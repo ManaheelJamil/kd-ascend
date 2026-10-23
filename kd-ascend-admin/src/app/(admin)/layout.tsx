@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -29,7 +29,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
       ) : null}
       <div className="min-h-screen lg:pl-[324px]">
-        <Header onMenu={() => setMenuOpen(true)} />
+        <Suspense fallback={<div className="h-[108px] border-b border-line" />}>
+          <Header onMenu={() => setMenuOpen(true)} />
+        </Suspense>
         <main className="px-5 pt-[27px] pb-12 md:pr-[49px] md:pl-[27px]">{children}</main>
       </div>
     </UsersDataProvider>
