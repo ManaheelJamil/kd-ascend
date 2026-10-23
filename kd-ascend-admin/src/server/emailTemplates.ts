@@ -12,6 +12,7 @@
 export type TemplateName =
   | 'verifyEmail'
   | 'resetCode'
+  | 'resetLink'
   | 'passwordChanged'
   | 'accountApproved'
   | 'accountRejected'
@@ -23,6 +24,8 @@ export type TemplateVars = {
   /** Recipient's first name; "there" when unknown. */
   name?: string | null;
   code?: string;
+  /** Password reset page link (resetLink template). */
+  link?: string;
   reason?: string | null;
   /** Shown in "If this wasn't you, contact …" lines. */
   supportEmail?: string | null;
@@ -33,6 +36,7 @@ export type RenderedEmail = { subject: string; html: string; text: string };
 export const TEMPLATE_LIST: { name: TemplateName; label: string; when: string }[] = [
   { name: 'verifyEmail', label: 'Email verification code', when: 'A new user verifies their email in the app' },
   { name: 'resetCode', label: 'Password reset code', when: 'A user taps Forgot Password and picks Email' },
+  { name: 'resetLink', label: 'Password reset request', when: 'A user taps Forgot Password and enters their email' },
   { name: 'passwordChanged', label: 'Password changed', when: 'Right after a password reset succeeds' },
   { name: 'accountApproved', label: 'Account approved', when: 'An admin approves a user' },
   { name: 'accountRejected', label: 'Application rejected', when: 'An admin rejects a user' },
@@ -95,8 +99,8 @@ function layout(name: TemplateName, appName: string, b: Block) {
     ...b.paragraphs.slice(1).map((p) => para(p, 27)),
     b.code ? codeBoxes(b.code) : '',
     b.button
-      ? `<tr><td align="center" style="padding:24px 41px 0">
-          <a href="${esc(b.button.href)}" style="display:block;background:${ORANGE};border-radius:12px;padding:14px 20px;font:500 16px/24px ${FONT};color:#FFFFFF;text-decoration:none;text-align:center">${esc(b.button.label)} &rarr;</a>
+      ? `<tr><td class="cw" align="center" style="padding:24px 41px 0">
+          <a href="${esc(b.button.href)}" style="display:block;background:${ORANGE};border-radius:12px;padding:12px 20px;font:500 16px/24px ${FONT};color:#FFFFFF;text-decoration:none;text-align:center">${esc(b.button.label)} &rarr;</a>
         </td></tr>`
       : '',
     ...(b.after ?? []).map((p, i) => para(p, i === 0 ? 24 : 16)),
@@ -132,7 +136,7 @@ function layout(name: TemplateName, appName: string, b: Block) {
 }
 
 const toText = (b: Block) =>
-  [b.title, '', ...b.paragraphs.map(strip), b.code ? `\nYour code: ${b.code}\n` : '', ...(b.after ?? []).map(strip)]
+  [b.title, '', ...b.paragraphs.map(strip), b.code ? `\nYour code: ${b.code}\n` : '', b.button ? `\n${b.button.label}: ${b.button.href}\n` : '', ...(b.after ?? []).map(strip)]
     .join('\n')
     .replace(/\n{3,}/g, '\n\n');
 
@@ -181,6 +185,16 @@ export function renderEmail(name: TemplateName, vars: TemplateVars = {}): Render
         after: [
           "This verification code will expire in 10 minutes for security reasons. If you didn't request a password reset, you can safely ignore this email.",
         ],
+        illustration: true,
+      };
+      break;
+    case 'resetLink':
+      subject = `Reset your ${appName} password`;
+      b = {
+        title: 'Password Reset Request',
+        paragraphs: [hello, 'We received a request to reset your account password. Click the button below to reset now.'],
+        button: { label: 'Reset Password', href: vars.link || '#' },
+        after: ["If you didn’t request a password reset, please ignore this email. This link will expire in 24 hours."],
         illustration: true,
       };
       break;
@@ -236,5 +250,6 @@ export function renderEmail(name: TemplateName, vars: TemplateVars = {}): Render
 export const SAMPLE_VARS: TemplateVars = {
   name: 'Nawal',
   code: '059426',
+  link: 'https://kd-ascend.vercel.app/reset-password?token=sample',
   reason: 'The identity document was not clear enough to read.',
 };

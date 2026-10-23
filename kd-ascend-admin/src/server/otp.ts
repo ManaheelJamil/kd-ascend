@@ -36,6 +36,10 @@ const RESEND_COOLDOWN_S = 30;
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 30 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+/** "This link will expire in 24 hours" (Figma Password Reset Request email). */
+const RESET_LINK_TTL_MS = 24 * 60 * 60 * 1000;
+
+const appUrl = () => (process.env.APP_URL || 'https://kd-ascend.vercel.app').replace(/\/+$/, '');
 
 type Purpose = 'verify_email' | 'reset_password';
 
@@ -262,6 +266,54 @@ export const handlers: Record<string, Handler> = {
     if (!user.email) throw new FnError('failed-precondition', 'This account has no email address. Use SMS instead.');
     if (user.disabled) throw new FnError('permission-denied', 'This account has been disabled.');
     return issueCode('reset_password', user, sendResetEmail);
+  },
+
+  /**
+   * Forgot password (email): sends the "Password Reset Request" email with a button that opens
+   * <APP_URL>/reset-password?token=…, where the user picks a new password. Valid for 24 hours.
+   */
+  async sendPasswordResetLink(data) {
+    const identifier = requireString(data, 'identifier');
+    const user = await findUser(identifier);
+    if (!user) throw new FnError('not-found', 'No account found with this email or phone number.');
+    if (!user.email) throw new FnError('failed-precondition', 'This account has no email address. Use SMS instead.');
+    if (user.disabled) throw new FnError('permission-denied', 'This account has been disabled.');
+
+    const destination = maskEmail(user.email);
+    const now = Date.now();
+    const ref = adminDb().collection('otp').doc(`reset_link_${user.uid}`);
+    const last = (await ref.get()).data() as { lastSentAt?: Timestamp } | undefined;
+    if (last?.lastSentAt && now - last.lastSentAt.toMillis() < RESEND_COOLDOWN_S * 1000) {
+      const left = Math.ceil((last.lastSentAt.toMillis() + RESEND_COOLDOWN_S * 1000 - now) / 1000);
+      return { status: 'cooldown', destination, retryAfterSeconds: left };
+    }
+
+    const resetToken = randomBytes(32).toString('hex');
+    const tokenRef = adminDb().collection('resetTokens').doc(sha256(resetToken));
+    await tokenRef.set({ uid: user.uid, kind: 'link', expiresAt: Timestamp.fromMillis(now + RESET_LINK_TTL_MS) });
+    await ref.set({ uid: user.uid, lastSentAt: Timestamp.fromMillis(now) });
+
+    try {
+      await sendTemplate(mailSettings(), user.email, 'resetLink', {
+        name: await displayName(user),
+        link: `${appUrl()}/reset-password?token=${resetToken}`,
+      });
+    } catch (e) {
+      console.error('Reset link email failed', e);
+      await Promise.all([tokenRef.delete(), ref.delete()]).catch(() => undefined);
+      throw new FnError('unavailable', 'We couldn’t send the email right now. Please try again.');
+    }
+    return { status: 'sent', destination, cooldownSeconds: RESEND_COOLDOWN_S };
+  },
+
+  /** Used by the reset-password page to check a link before showing the form. */
+  async checkResetToken(data) {
+    const resetToken = requireString(data, 'resetToken', 128);
+    const snap = await adminDb().collection('resetTokens').doc(sha256(resetToken)).get();
+    const t = snap.data() as { uid: string; expiresAt: Timestamp } | undefined;
+    if (!t || t.expiresAt.toMillis() < Date.now()) return { status: 'expired' };
+    const user = await adminAuth().getUser(t.uid);
+    return { status: 'ok', email: user.email ? maskEmail(user.email) : null };
   },
 
   async verifyPasswordResetCode(data) {
