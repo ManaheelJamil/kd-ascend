@@ -3,7 +3,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { UserRecord } from 'firebase-admin/auth';
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { adminAuth, adminDb, mailSettings } from './admin';
-import { sendResetEmail, sendVerificationEmail, type MailConfig } from './email';
+import { sendResetEmail, sendTemplate, sendVerificationEmail, type MailConfig } from './email';
+import { firstName } from './emailTemplates';
 
 /**
  * Same behaviour as the Cloud Functions in the mobile project (functions/src/index.ts),
@@ -101,7 +102,7 @@ async function findUser(identifier: string): Promise<UserRecord | null> {
 async function issueCode(
   purpose: Purpose,
   user: UserRecord,
-  send: (cfg: MailConfig, to: string, code: string) => Promise<void>,
+  send: (cfg: MailConfig, to: string, code: string, name?: string | null) => Promise<void>,
 ): Promise<SendResult> {
   const cfg = mailSettings();
   const email = user.email!;
@@ -137,13 +138,37 @@ async function issueCode(
   if (outcome) return outcome;
 
   try {
-    await send(cfg, email, code);
+    await send(cfg, email, code, await displayName(user));
   } catch (e) {
     console.error('Email send failed', e);
     await ref.delete().catch(() => undefined);
     throw new FnError('unavailable', 'We couldn’t send the email right now. Please try again.');
   }
   return { status: 'sent', destination, cooldownSeconds: RESEND_COOLDOWN_S };
+}
+
+/** First name for "Hey, Nawal 👋": profile name from onboarding, else the Auth display name. */
+async function displayName(user: UserRecord): Promise<string | null> {
+  try {
+    const snap = await adminDb().doc(`users/${user.uid}`).get();
+    const profile = snap.get('profile') as { fullName?: string } | undefined;
+    return firstName(profile?.fullName) || firstName(user.displayName) || null;
+  } catch {
+    return firstName(user.displayName) || null;
+  }
+}
+
+/** Sends a template to a user without ever failing the request that triggered it. */
+export async function notifyUser(uid: string, template: Parameters<typeof sendTemplate>[2], vars: Record<string, string | null> = {}) {
+  try {
+    const user = await adminAuth().getUser(uid);
+    if (!user.email) return false;
+    await sendTemplate(mailSettings(), user.email, template, { name: await displayName(user), ...vars });
+    return true;
+  } catch (e) {
+    console.error(`[email] ${template} to ${uid} failed`, e);
+    return false;
+  }
 }
 
 async function checkCode(purpose: Purpose, uid: string, code: string): Promise<VerifyResult> {
@@ -254,6 +279,12 @@ export const handlers: Record<string, Handler> = {
     return { status: 'ok', resetToken };
   },
 
+  /** Called by the app right after a password change done through the SMS reset path. */
+  async notifyPasswordChanged(_data, uidOrNull) {
+    const uid = requireAuth(uidOrNull);
+    return { sent: await notifyUser(uid, 'passwordChanged') };
+  },
+
   async resetPasswordWithToken(data) {
     const resetToken = requireString(data, 'resetToken', 128);
     const newPassword = data.newPassword;
@@ -272,6 +303,7 @@ export const handlers: Record<string, Handler> = {
     await adminAuth().updateUser(tokenData.uid, { password: newPassword });
     await adminAuth().revokeRefreshTokens(tokenData.uid);
     await ref.delete();
+    await notifyUser(tokenData.uid, 'passwordChanged');
     return { status: 'ok' };
   },
 };

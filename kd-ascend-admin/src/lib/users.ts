@@ -17,6 +17,27 @@ const usersCol = collection(db, 'users');
 const userRef = (uid: string) => doc(db, 'users', uid);
 const adminId = () => auth.currentUser?.email ?? auth.currentUser?.uid ?? 'admin';
 
+type NotifyEvent = 'approved' | 'rejected' | 'blacklisted' | 'restored';
+
+/**
+ * Emails the user about an admin decision (templates live in src/server/emailTemplates.ts).
+ * Runs in the background: the status change is already saved, so a mail problem never blocks the admin.
+ */
+function notify(uid: string, event: NotifyEvent, reason?: string) {
+  const user = auth.currentUser;
+  if (!user) return;
+  user
+    .getIdToken()
+    .then((token) =>
+      fetch('/api/admin/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ uid, event, reason }),
+      }),
+    )
+    .catch((e) => console.warn('Notification email not sent', e));
+}
+
 /** Live list of every user document. */
 export function subscribeUsers(onData: (users: UserDoc[]) => void, onError: (e: Error) => void): Unsubscribe {
   return onSnapshot(
@@ -35,36 +56,42 @@ export function subscribeUser(uid: string, onData: (user: UserDoc | null) => voi
   );
 }
 
-export const approveUser = (uid: string) =>
-  updateDoc(userRef(uid), {
+export const approveUser = async (uid: string) => {
+  await updateDoc(userRef(uid), {
     status: 'approved',
     approvedAt: serverTimestamp(),
     approvedBy: adminId(),
     rejectionReason: deleteField(),
     updatedAt: serverTimestamp(),
   });
+  notify(uid, 'approved');
+};
 
-export const rejectUser = (uid: string, reason: string) =>
-  updateDoc(userRef(uid), {
+export const rejectUser = async (uid: string, reason: string) => {
+  await updateDoc(userRef(uid), {
     status: 'rejected',
     rejectedAt: serverTimestamp(),
     rejectedBy: adminId(),
     rejectionReason: reason.trim(),
     updatedAt: serverTimestamp(),
   });
+  notify(uid, 'rejected', reason);
+};
 
-export const blacklistUser = (uid: string, reason: string) =>
-  updateDoc(userRef(uid), {
+export const blacklistUser = async (uid: string, reason: string) => {
+  await updateDoc(userRef(uid), {
     status: 'blacklisted',
     blacklistedAt: serverTimestamp(),
     blacklistedBy: adminId(),
     blacklistReason: reason.trim(),
     updatedAt: serverTimestamp(),
   });
+  notify(uid, 'blacklisted', reason);
+};
 
 /** "They will be able to access the platform again" → back to an approved account. */
-export const removeFromBlacklist = (uid: string) =>
-  updateDoc(userRef(uid), {
+export const removeFromBlacklist = async (uid: string) => {
+  await updateDoc(userRef(uid), {
     status: 'approved',
     approvedAt: serverTimestamp(),
     approvedBy: adminId(),
@@ -73,6 +100,8 @@ export const removeFromBlacklist = (uid: string) =>
     blacklistedBy: deleteField(),
     updatedAt: serverTimestamp(),
   });
+  notify(uid, 'restored');
+};
 
 export const updateContact = (uid: string, data: { phone: string; address: string; fullName: string }, user: UserDoc) =>
   updateDoc(userRef(uid), {

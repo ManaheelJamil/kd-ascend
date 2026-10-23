@@ -48,6 +48,8 @@ export function mailSettings() {
     pass,
     from: process.env.MAIL_FROM || `KD Ascend <${user}>`,
     appName: process.env.APP_NAME || 'KD Ascend',
+    /** Shown in "if this wasn't you" lines; falls back to the sending address. */
+    supportEmail: process.env.SUPPORT_EMAIL || user,
   };
 }
 
