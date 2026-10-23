@@ -62,21 +62,11 @@ function UsersPageInner() {
   const pathname = usePathname();
   const params = useSearchParams();
   const status = (params.get('status') as StatusFilter) || 'all';
-  const [q, setQState] = useState(params.get('q') ?? '');
+  // Searches only this page's table (separate from the search bar at the top).
+  const [q, setQ] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filterRef = useRef<HTMLDivElement>(null);
-
-  // The search text lives in the URL (?q=) so this box and the header search stay in sync.
-  const qParam = params.get('q') ?? '';
-  useEffect(() => setQState(qParam), [qParam]);
-  const setQ = (next: string) => {
-    setQState(next);
-    const sp = new URLSearchParams(params.toString());
-    if (next.trim()) sp.set('q', next);
-    else sp.delete('q');
-    router.replace(`${pathname}${sp.toString() ? `?${sp}` : ''}`, { scroll: false });
-  };
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -98,10 +88,7 @@ function UsersPageInner() {
     () => users.filter((u) => (status === 'all' || u.status === status) && matches(u, q.trim())),
     [users, status, q],
   );
-  const pending = useMemo(
-    () => users.filter((u) => u.status === 'under_review' && matches(u, q.trim())),
-    [users, q],
-  );
+  const pending = useMemo(() => users.filter((u) => u.status === 'under_review'), [users]);
 
   const exportCsv = () => {
     const list = selected.size ? filtered.filter((u) => selected.has(u.uid)) : filtered;
@@ -139,10 +126,7 @@ function UsersPageInner() {
 
       {pending.length > 0 && (status === 'all' || status === 'under_review') ? (
         <Card accent className="p-6">
-          <h2 className="text-lg font-bold text-ink">
-            Pending Approvals ({pending.length})
-            {q.trim() ? <span className="ml-2 text-sm font-medium text-muted">matching “{q.trim()}”</span> : null}
-          </h2>
+          <h2 className="text-lg font-bold text-ink">Pending Approvals ({pending.length})</h2>
           <div className="mt-5 flex max-h-[330px] flex-col gap-[9px] overflow-y-auto">
             {pending.map((u) => (
               <div key={u.uid} className="flex items-center gap-[13px] rounded-control border border-line px-[15px] py-[14.5px]">
