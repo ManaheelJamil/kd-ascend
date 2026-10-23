@@ -108,11 +108,11 @@ export default function DocumentReviewModal({
             <span className="mx-auto grid size-14 place-items-center rounded-card bg-brand/10 text-brand">
               <FileText className="size-7" />
             </span>
-            <p className="mt-4 font-semibold text-ink">{loadError ? 'Couldn’t load this file' : 'File not stored yet'}</p>
+            <p className="mt-4 font-semibold text-ink">{loadError ? 'Couldn’t load this file' : 'File not available'}</p>
             <p className="mt-1.5 text-sm text-muted">
               {loadError
                 ? loadError
-                : 'Only the file details were saved because Firebase Storage isn’t set up yet (it needs the Blaze plan). Files uploaded after Storage is enabled can be viewed here.'}
+                : 'This file was uploaded before file saving was switched on, so only its name was recorded. Ask the user to upload it again from the app (Account → Identity Documents or Payment Details).'}
             </p>
           </div>
         )}

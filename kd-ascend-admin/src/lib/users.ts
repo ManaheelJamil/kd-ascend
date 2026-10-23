@@ -11,6 +11,7 @@ import {
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, getSecondaryAuth, storage } from './firebase';
+import { firestoreFileUrl, isFirestoreFile, saveFileToFirestore } from './fileStore';
 import type { Payout, PersonalInfo, StoredFile, UserDoc } from './types';
 
 const usersCol = collection(db, 'users');
@@ -123,13 +124,13 @@ export const updatePayout = (uid: string, payout: Payout) =>
 export async function setDocumentStatus(user: UserDoc, which: DocumentRef, status: 'verified' | 'rejected') {
   if (which.kind === 'identity' && user.identityDocument) {
     return updateDoc(userRef(user.uid), {
-      identityDocument: { ...user.identityDocument, status },
+      identityDocument: { ...user.identityDocument, status, reviewedAt: serverTimestamp() },
       updatedAt: serverTimestamp(),
     });
   }
   if (which.kind === 'statement' && user.payout?.method === 'bank' && user.payout.statement) {
     return updateDoc(userRef(user.uid), {
-      payout: { ...user.payout, statement: { ...user.payout.statement, status } },
+      payout: { ...user.payout, statement: { ...user.payout.statement, status, reviewedAt: serverTimestamp() } },
       updatedAt: serverTimestamp(),
     });
   }
@@ -164,6 +165,7 @@ export function listDocuments(user: UserDoc): UserDocument[] {
  */
 export async function fileUrl(file: StoredFile): Promise<string | null> {
   if (!file.path || file.path.startsWith('not-uploaded/')) return null;
+  if (isFirestoreFile(file.path)) return firestoreFileUrl(file.path);
   return getDownloadURL(ref(storage, file.path));
 }
 
@@ -172,12 +174,18 @@ export async function uploadFile(uid: string, folder: string, file: File, label?
   const ext = file.name.includes('.') ? file.name.split('.').pop() : file.type.split('/').pop();
   const path = `users/${uid}/${folder}/${Date.now()}.${ext}`;
   const base = { name: file.name, contentType: file.type || 'application/octet-stream', size: file.size, ...(label ? { label } : {}) };
+  // Firestore file store first (works on the free plan); Firebase Storage as a fallback.
   try {
-    await uploadBytes(ref(storage, path), file, { contentType: base.contentType });
-    return { ...base, path };
+    return { ...base, path: await saveFileToFirestore(uid, file) };
   } catch (e) {
-    console.warn('[uploadFile] Storage upload failed, saving file details only:', e);
-    return { ...base, path: `not-uploaded/${uid}/${folder}/${file.name}` };
+    if ((e as Error).message?.includes('larger than')) throw e;
+    try {
+      await uploadBytes(ref(storage, path), file, { contentType: base.contentType });
+      return { ...base, path };
+    } catch (e2) {
+      console.warn('[uploadFile] upload failed, saving file details only:', e, e2);
+      return { ...base, path: `not-uploaded/${uid}/${folder}/${file.name}` };
+    }
   }
 }
 
