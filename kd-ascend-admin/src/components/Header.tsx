@@ -102,14 +102,21 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
             <p className="text-lg leading-[27px] font-semibold text-ink">{admin?.name || 'Admin User'}</p>
             <p className="text-[15.8px] leading-[22px] text-muted">Administrator</p>
           </div>
-          <span
+          <Link
+            href="/settings"
             className={cn(
-              'grid size-10 shrink-0 place-items-center rounded-full bg-linear-to-r from-brand to-brand-light text-white md:size-[54px]',
+              'grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-linear-to-r from-brand to-brand-light text-white md:size-[54px]',
             )}
-            title={admin?.email}
+            title={`${admin?.email ?? ''} · Settings`}
+            aria-label="Profile settings"
           >
-            <User className="size-5 md:size-[27px]" strokeWidth={1.8} />
-          </span>
+            {admin?.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={admin.photo} alt="" className="size-full object-cover" />
+            ) : (
+              <User className="size-5 md:size-[27px]" strokeWidth={1.8} />
+            )}
+          </Link>
         </div>
       </div>
     </header>

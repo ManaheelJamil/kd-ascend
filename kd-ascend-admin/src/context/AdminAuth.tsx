@@ -6,7 +6,7 @@ import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
-type AdminProfile = { name: string; email: string };
+type AdminProfile = { name: string; email: string; /** Profile photo (data URL) from Settings. */ photo?: string | null };
 
 type State = {
   /** True until Firebase has restored the session and the admin check has finished. */
@@ -33,9 +33,9 @@ export class NotAdminError extends Error {
 async function loadAdmin(user: User): Promise<AdminProfile | null> {
   const snap = await getDoc(doc(db, 'admins', user.uid));
   if (!snap.exists()) return null;
-  const data = snap.data() as { name?: string; email?: string };
+  const data = snap.data() as { name?: string; email?: string; photo?: string | null };
   // Auth is the source of truth for the email (it changes after the admin confirms a new address).
-  return { name: data.name || 'Admin User', email: user.email || data.email || '' };
+  return { name: data.name || 'Admin User', email: user.email || data.email || '', photo: data.photo || null };
 }
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {

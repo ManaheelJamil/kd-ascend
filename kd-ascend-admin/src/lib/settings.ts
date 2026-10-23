@@ -41,7 +41,7 @@ const MAX_SIDE = 480;
 const MAX_BYTES = 700_000; // Firestore documents are limited to 1 MiB.
 
 /** Reads an image file and scales it down so it fits comfortably in a Firestore document. */
-export async function imageFileToDataUrl(file: File): Promise<string> {
+export async function imageFileToDataUrl(file: File, opts: { square?: number } = {}): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Please choose an image file (PNG, JPG, SVG or WebP).');
   if (file.size > 10 * 1024 * 1024) throw new Error('That image is larger than 10 MB. Please choose a smaller file.');
 
@@ -52,14 +52,21 @@ export async function imageFileToDataUrl(file: File): Promise<string> {
     await img.decode();
     const w = img.naturalWidth || MAX_SIDE;
     const h = img.naturalHeight || MAX_SIDE;
-    const k = Math.min(1, MAX_SIDE / Math.max(w, h));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(w * k));
-    canvas.height = Math.max(1, Math.round(h * k));
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not read that image.');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    let data = canvas.toDataURL('image/png');
+    if (opts.square) {
+      // Profile photos: centre-crop to a square so they fill the round avatar.
+      const side = Math.min(w, h);
+      canvas.width = canvas.height = Math.min(opts.square, side);
+      ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+    } else {
+      const k = Math.min(1, MAX_SIDE / Math.max(w, h));
+      canvas.width = Math.max(1, Math.round(w * k));
+      canvas.height = Math.max(1, Math.round(h * k));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+    let data = opts.square ? canvas.toDataURL('image/jpeg', 0.88) : canvas.toDataURL('image/png');
     if (data.length > MAX_BYTES) data = canvas.toDataURL('image/webp', 0.85);
     if (data.length > MAX_BYTES) data = canvas.toDataURL('image/jpeg', 0.8);
     if (data.length > MAX_BYTES) throw new Error('That image is too detailed to store. Please choose a simpler logo.');

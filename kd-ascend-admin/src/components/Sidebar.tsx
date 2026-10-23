@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Building2, BriefcaseBusiness, CreditCard, LayoutGrid, LogOut, Settings, Users, X } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuth';
-import { useBranding } from '@/lib/settings';
 import { cn } from './ui';
 
 const NAV = [
@@ -19,7 +18,6 @@ const NAV = [
 export default function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
   const pathname = usePathname();
   const { logout } = useAdminAuth();
-  const { logo } = useBranding();
 
   return (
     <aside
@@ -31,7 +29,7 @@ export default function Sidebar({ open, onNavigate }: { open: boolean; onNavigat
       <div className="flex h-[68px] shrink-0 items-center justify-between gap-2 border-b border-line px-5 md:h-[108px] xl:px-9">
         <Link href="/dashboard" onClick={onNavigate} className="min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logo} alt="KD Ascend" className="h-10 w-auto max-w-full object-contain md:h-[54px]" />
+          <img src="/logo.png" alt="KD Ascend" className="h-10 w-auto max-w-full object-contain md:h-[54px]" />
         </Link>
         <button
           type="button"

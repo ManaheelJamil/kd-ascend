@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, verifyBeforeUpdateEmail } from 'firebase/auth';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { CircleCheck, Eye, EyeOff, Pencil } from 'lucide-react';
+import { CircleCheck, Eye, EyeOff, Pencil, User } from 'lucide-react';
 import { Button, Card, cn } from '@/components/ui';
 import { CorpField, CorpInput } from '@/components/CorporateBits';
 import { authErrorMessage, useAdminAuth } from '@/context/AdminAuth';
 import { auth, db } from '@/lib/firebase';
-import { imageFileToDataUrl, saveLogo, useBranding } from '@/lib/settings';
+import { imageFileToDataUrl } from '@/lib/settings';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -52,11 +52,10 @@ function PasswordInput({
 /** Figma "Setting" (542:1964): company logo, admin details and password. */
 export default function SettingsPage() {
   const { user, admin, setAdminProfile } = useAdminAuth();
-  const branding = useBranding();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [pendingLogo, setPendingLogo] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [oldPassword, setOldPassword] = useState('');
@@ -74,17 +73,33 @@ export default function SettingsPage() {
 
   const clear = (k: keyof Errors) => setErrors((e) => ({ ...e, [k]: undefined }));
 
-  const pickLogo = () => fileRef.current?.click();
+  const pickPhoto = () => fileRef.current?.click();
+
+  /** Saves (or removes) the admin's profile photo straight away and updates the header avatar. */
+  const savePhoto = async (photo: string | null) => {
+    if (!user) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await updateDoc(doc(db, 'admins', user.uid), { photo, updatedAt: serverTimestamp() });
+      setAdminProfile({ photo });
+      setNotice([photo ? 'Profile photo updated.' : 'Profile photo removed.']);
+    } catch (err) {
+      setPhotoError(authErrorMessage(err));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setLogoError(null);
+    setPhotoError(null);
     try {
-      setPendingLogo(await imageFileToDataUrl(file));
+      await savePhoto(await imageFileToDataUrl(file, { square: 320 }));
     } catch (err) {
-      setLogoError((err as Error).message);
+      setPhotoError((err as Error).message);
     }
   };
 
@@ -121,12 +136,6 @@ export default function SettingsPage() {
     setBusy(true);
     const done: string[] = [];
     try {
-      if (pendingLogo) {
-        await saveLogo(pendingLogo);
-        setPendingLogo(null);
-        done.push('Company logo updated.');
-      }
-
       if (name.trim() !== (admin?.name ?? '')) {
         await updateDoc(doc(db, 'admins', user.uid), { name: name.trim(), updatedAt: serverTimestamp() });
         setAdminProfile({ name: name.trim() });
@@ -172,74 +181,55 @@ export default function SettingsPage() {
     }
   };
 
-  const shownLogo = pendingLogo ?? branding.logo;
-
   return (
     <form onSubmit={save} className="flex flex-col gap-[22.5px]" noValidate>
       <h1 className="text-[22.5px] leading-8 font-bold text-ink">Setting</h1>
 
-      {/* Company logo */}
+      {/* Profile photo — also shown in the top-right corner of every page */}
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-[50px]">
         <div className="flex flex-col items-center gap-2.5 sm:pl-[21px]">
           <div className="relative size-[176px] shrink-0">
-            <div className="grid size-full place-items-center overflow-hidden rounded-full bg-[#f5f2f2] p-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={shownLogo} alt="Company logo" className="max-h-full max-w-full object-contain" />
+            <div className="grid size-full place-items-center overflow-hidden rounded-full bg-[#f5f2f2]">
+              {admin?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={admin.photo} alt="Profile photo" className="size-full object-cover" />
+              ) : (
+                <User className="size-20 text-muted/50" strokeWidth={1.4} />
+              )}
+              {photoBusy ? <span className="absolute inset-0 grid place-items-center rounded-full bg-white/60 text-sm text-muted">Saving…</span> : null}
             </div>
             <button
               type="button"
-              onClick={pickLogo}
-              aria-label="Change company logo"
+              onClick={pickPhoto}
+              disabled={photoBusy}
+              aria-label="Change profile photo"
               className="absolute right-0.5 bottom-3 grid size-10 place-items-center rounded-[10px] bg-[#fff2ed] text-brand ring-4 ring-page transition hover:bg-brand hover:text-white"
             >
               <Pencil className="size-[18px]" strokeWidth={2} />
             </button>
           </div>
-          <p className="text-[20.75px] leading-[23px] font-semibold text-ink">Company Logo</p>
+          <p className="text-[20.75px] leading-[23px] font-semibold text-ink">Profile Photo</p>
         </div>
 
         <div className="flex w-full flex-col gap-3 sm:w-auto">
           <div className="flex gap-3 sm:gap-4">
-            <Button type="button" onClick={pickLogo} className="flex-1 shadow-brand sm:w-[168px] sm:flex-none">
+            <Button type="button" onClick={pickPhoto} loading={photoBusy} className="flex-1 shadow-brand sm:w-[168px] sm:flex-none">
               Upload New
             </Button>
             <Button
               type="button"
               variant="outline"
               className="flex-1 sm:w-[168px] sm:flex-none"
-              disabled={!pendingLogo}
-              onClick={() => {
-                setPendingLogo(null);
-                setLogoError(null);
-              }}
+              disabled={!admin?.photo || photoBusy}
+              onClick={() => savePhoto(null)}
             >
-              Cancel
+              Remove
             </Button>
           </div>
-          {pendingLogo ? (
-            <p className="text-sm text-muted">New logo selected — click Save Changes to apply it.</p>
-          ) : null}
-          {branding.custom && !pendingLogo ? (
-            <button
-              type="button"
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await saveLogo(null);
-                } catch (err) {
-                  setLogoError(authErrorMessage(err));
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              className="self-start text-sm text-muted underline-offset-2 hover:text-danger hover:underline"
-            >
-              Restore default logo
-            </button>
-          ) : null}
-          {logoError ? <p className="text-sm text-danger">{logoError}</p> : null}
+          <p className="text-sm text-muted">JPG, PNG or WebP. Saved straight away.</p>
+          {photoError ? <p className="text-sm text-danger">{photoError}</p> : null}
         </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={onFile} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onFile} />
       </div>
 
       {/* Admin details */}
