@@ -62,8 +62,10 @@ function UsersPageInner() {
   const pathname = usePathname();
   const params = useSearchParams();
   const status = (params.get('status') as StatusFilter) || 'all';
-  // Searches only this page's table (separate from the search bar at the top).
+  // Search box on this page: searches all users (the table).
   const [q, setQ] = useState('');
+  // Top search bar (header, ?q= in the URL): searches the Pending Approvals list only.
+  const pendingQ = (params.get('q') ?? '').trim();
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filterRef = useRef<HTMLDivElement>(null);
@@ -88,7 +90,8 @@ function UsersPageInner() {
     () => users.filter((u) => (status === 'all' || u.status === status) && matches(u, q.trim())),
     [users, status, q],
   );
-  const pending = useMemo(() => users.filter((u) => u.status === 'under_review'), [users]);
+  const allPending = useMemo(() => users.filter((u) => u.status === 'under_review'), [users]);
+  const pending = useMemo(() => allPending.filter((u) => matches(u, pendingQ)), [allPending, pendingQ]);
 
   const exportCsv = () => {
     const list = selected.size ? filtered.filter((u) => selected.has(u.uid)) : filtered;
@@ -124,9 +127,15 @@ function UsersPageInner() {
         <StatTile label="Pending Approval" value={counts.under_review} tone="text-brand" active={status === 'under_review'} onClick={() => setStatus('under_review')} />
       </div>
 
-      {pending.length > 0 && (status === 'all' || status === 'under_review') ? (
+      {(allPending.length > 0 || pendingQ) && (status === 'all' || status === 'under_review') ? (
         <Card accent className="p-6">
-          <h2 className="text-lg font-bold text-ink">Pending Approvals ({pending.length})</h2>
+          <h2 className="text-lg font-bold text-ink">
+            Pending Approvals ({pending.length})
+            {pendingQ ? <span className="ml-2 text-sm font-medium text-muted">matching “{pendingQ}”</span> : null}
+          </h2>
+          {pendingQ && pending.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">No pending users match “{pendingQ}”.</p>
+          ) : null}
           <div className="mt-5 flex max-h-[330px] flex-col gap-[9px] overflow-y-auto">
             {pending.map((u) => (
               <div key={u.uid} className="flex items-center gap-[13px] rounded-control border border-line px-[15px] py-[14.5px]">
@@ -154,7 +163,7 @@ function UsersPageInner() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, email, phone or NRIC..."
+            placeholder="Search all users by name, email, phone or NRIC..."
             className="h-[43px] w-full rounded-control border border-field pr-10 pl-10 text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
           />
           {q ? (
