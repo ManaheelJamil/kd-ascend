@@ -17,7 +17,7 @@ export default function AuthShell({
           <Image src="/logo.png" alt="KD Ascend" width={274} height={54} priority className="h-[54px] w-auto" />
         </div>
         <div className="rounded-card border border-line bg-white p-8 shadow-sm">
-          <h1 className="text-[27px] leading-8 font-bold text-ink">{title}</h1>
+          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">{title}</h1>
           <p className="mt-1.5 text-[15.8px] text-muted">{subtitle}</p>
           <div className="mt-7">{children}</div>
         </div>

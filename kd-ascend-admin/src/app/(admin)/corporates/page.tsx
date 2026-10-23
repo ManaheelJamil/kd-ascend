@@ -121,23 +121,23 @@ export default function CorporatesPage() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <Card className="flex flex-wrap items-center gap-[14px] p-[28px]">
-        <div className="relative min-w-[220px] flex-1">
+      <Card className="flex flex-wrap items-center gap-[14px] p-4 sm:p-[28px]">
+        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
           <Search className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search corporate"
-            className="h-[52px] w-full rounded-card border border-field pr-4 pl-[50px] text-lg outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
+            className="h-[46px] w-full rounded-card border border-field pr-4 pl-[50px] text-base outline-none sm:h-[52px] sm:text-lg placeholder:text-[#0a0a0a]/50 focus:border-brand"
           />
         </div>
         <div className="relative" ref={filterRef}>
-          <Button variant="outline" className="h-[52px] rounded-card px-5 text-lg" onClick={() => setFilterOpen((o) => !o)}>
+          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={() => setFilterOpen((o) => !o)}>
             <Filter className="size-5" />
             {status === 'all' ? 'Filter' : corporateStatusLabel(status)}
           </Button>
           {filterOpen ? (
-            <div className="absolute right-0 z-20 mt-2 w-48 rounded-control border border-line bg-white py-1.5 shadow-lg">
+            <div className="absolute left-0 z-20 mt-2 w-48 rounded-control sm:right-0 sm:left-auto border border-line bg-white py-1.5 shadow-lg">
               {[{ value: 'all' as const, label: 'All corporates' }, ...CORPORATE_STATUSES].map((s) => (
                 <button
                   key={s.value}
@@ -156,14 +156,57 @@ export default function CorporatesPage() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" className="h-[52px] rounded-card px-5 text-lg" onClick={exportCsv}>
+        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={exportCsv}>
           <Download className="size-5" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>
       </Card>
 
-      <Card className="min-h-[400px] overflow-hidden">
-        <div className="overflow-x-auto">
+      <Card className="overflow-hidden md:min-h-[400px]">
+        {/* Phones: one card per corporate instead of the wide table. */}
+        <ul className="divide-y divide-line md:hidden">
+          {rows.length === 0 ? (
+            <li className="px-4 py-12 text-center text-[15px] text-muted">
+              {list.length === 0 ? 'No corporates yet.' : 'No corporates match your search.'}
+            </li>
+          ) : (
+            rows.map((c) => (
+              <li
+                key={c.id}
+                onClick={() => router.push(`/corporates/${c.id}`)}
+                className="flex cursor-pointer items-start gap-3 px-4 py-3.5 active:bg-page"
+              >
+                <Avatar letter={(c.name || '?').charAt(0).toUpperCase()} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
+                    <CorporateStatusBadge status={c.status} />
+                  </div>
+                  {c.contactEmail ? <p className="truncate text-[13px] text-muted">{c.contactEmail}</p> : null}
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="truncate text-[12.5px] text-muted">
+                      {c.contactPhone || '—'} · {isoDay(c.createdAt)}
+                    </p>
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/corporates/${c.id}/edit`}
+                        aria-label="Edit"
+                        className="grid size-[31px] place-items-center rounded-control text-muted hover:bg-page hover:text-ink"
+                      >
+                        <SquarePen className="size-[18px]" />
+                      </Link>
+                      <IconButton label="Delete" onClick={() => setToDelete(c)} className="text-danger">
+                        <Trash2 className="size-[18px]" />
+                      </IconButton>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
             <thead>
               <tr className="h-16 border-b border-line bg-page">

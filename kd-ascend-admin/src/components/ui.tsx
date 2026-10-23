@@ -28,8 +28,8 @@ export function PageTitle({ title, subtitle, children }: { title: string; subtit
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-[27px] leading-8 font-bold text-ink">{title}</h1>
-        {subtitle ? <p className="mt-1 text-[15.8px] text-muted">{subtitle}</p> : null}
+        <h1 className="text-[22px] leading-7 font-bold text-ink sm:text-[27px] sm:leading-8">{title}</h1>
+        {subtitle ? <p className="mt-1 text-[14px] text-muted sm:text-[15.8px]">{subtitle}</p> : null}
       </div>
       {children}
     </div>
@@ -267,7 +267,8 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40" onMouseDown={onClose}>
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -275,6 +276,7 @@ export function Modal({
         className={cn('relative w-full max-w-[514px] rounded-card bg-white shadow-2xl', className)}
       >
         {children}
+      </div>
       </div>
     </div>
   );

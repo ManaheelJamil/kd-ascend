@@ -216,20 +216,20 @@ export default function AddUserPage() {
   };
 
   return (
-    <div className="flex flex-col gap-[40px]">
+    <div className="flex flex-col gap-6 md:gap-[40px]">
       <div className="flex items-start gap-[18px]">
-        <Link href="/users" aria-label="Back" className="mt-1 grid size-[54px] place-items-center rounded-full bg-white text-ink hover:bg-line">
+        <Link href="/users" aria-label="Back" className="mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-white sm:size-[54px] text-ink hover:bg-line">
           <ArrowLeft className="size-[22px]" />
         </Link>
         <div>
-          <h1 className="text-[27px] leading-8 font-bold text-ink">Add New User</h1>
+          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">Add New User</h1>
           <p className="mt-1.5 text-[13.5px] text-muted">Create a new user account</p>
         </div>
       </div>
 
       <div className="grid gap-[27px] xl:grid-cols-[minmax(0,700px)_336px]">
         <div className="flex flex-col gap-[27px]">
-          <Card className="flex items-center gap-[18px] p-[28px]">
+          <Card className="flex items-center gap-[18px] p-5 sm:p-[28px]">
             <span className="grid size-[54px] shrink-0 place-items-center rounded-card bg-linear-to-r from-brand to-brand-light text-white">
               <User className="size-[27px]" strokeWidth={1.8} />
             </span>
@@ -238,7 +238,7 @@ export default function AddUserPage() {
             </Field>
           </Card>
 
-          <Card className="p-[28px]">
+          <Card className="p-5 sm:p-[28px]">
             <h2 className="text-lg font-bold text-ink">Contact Information</h2>
             <div className="mt-[27px] grid gap-[27px] md:grid-cols-2">
               <Field label="Email" required error={errors.email}>
@@ -267,7 +267,7 @@ export default function AddUserPage() {
             </div>
           </Card>
 
-          <Card className="p-[28px]">
+          <Card className="p-5 sm:p-[28px]">
             <h2 className="text-lg font-bold text-ink">Personal Information</h2>
             <div className="mt-[27px] grid gap-[27px] md:grid-cols-2">
               <Field label="NRIC" required error={errors.nric}>
@@ -290,7 +290,7 @@ export default function AddUserPage() {
             </div>
           </Card>
 
-          <Card className="p-[28px]">
+          <Card className="p-5 sm:p-[28px]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-ink">Document Upload</h2>
               <Button
@@ -316,7 +316,7 @@ export default function AddUserPage() {
             </div>
           </Card>
 
-          <Card className="p-[28px]">
+          <Card className="p-5 sm:p-[28px]">
             <div className="flex flex-wrap items-center gap-x-[45px] gap-y-3">
               <h2 className="text-lg font-bold text-ink">Payment Information</h2>
               <Radio checked={method === 'paynow'} label="PAYNOW" onSelect={() => setMethod('paynow')} />

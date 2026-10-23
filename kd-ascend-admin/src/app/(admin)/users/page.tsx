@@ -46,12 +46,12 @@ function StatTile({ label, value, tone, active, onClick }: { label: string; valu
       type="button"
       onClick={onClick}
       className={cn(
-        'flex h-[110px] flex-col justify-center gap-2 rounded-card border bg-white px-6 text-left transition hover:border-brand/40',
+        'flex h-[92px] flex-col justify-center gap-1.5 rounded-card border bg-white px-4 text-left transition hover:border-brand/40 sm:h-[110px] sm:gap-2 sm:px-6',
         active ? 'border-brand' : 'border-line',
       )}
     >
       <span className="text-[13.5px] text-muted">{label}</span>
-      <span className={cn('text-[27px] leading-9 font-bold', tone)}>{value}</span>
+      <span className={cn('text-[24px] leading-8 font-bold sm:text-[27px] sm:leading-9', tone)}>{value}</span>
     </button>
   );
 }
@@ -119,7 +119,7 @@ function UsersPageInner() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="grid grid-cols-2 gap-[22.5px] md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-[22.5px] md:grid-cols-3 xl:grid-cols-5">
         <StatTile label="Total Users" value={counts.total} tone="text-ink" active={status === 'all'} onClick={() => setStatus('all')} />
         <StatTile label="Active Users" value={counts.approved} tone="text-success" active={status === 'approved'} onClick={() => setStatus('approved')} />
         <StatTile label="Rejected Users" value={counts.rejected} tone="text-danger" active={status === 'rejected'} onClick={() => setStatus('rejected')} />
@@ -128,7 +128,7 @@ function UsersPageInner() {
       </div>
 
       {(allPending.length > 0 || pendingQ) && (status === 'all' || status === 'under_review') ? (
-        <Card accent className="p-6">
+        <Card accent className="p-4 sm:p-6">
           <h2 className="text-lg font-bold text-ink">
             Pending Approvals ({pending.length})
             {pendingQ ? <span className="ml-2 text-sm font-medium text-muted">matching “{pendingQ}”</span> : null}
@@ -157,8 +157,8 @@ function UsersPageInner() {
         </Card>
       ) : null}
 
-      <Card className="flex flex-wrap items-center gap-[13.5px] p-[22.5px]">
-        <div className="relative min-w-[220px] flex-1">
+      <Card className="flex flex-wrap items-center gap-[13.5px] p-4 sm:p-[22.5px]">
+        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
           <Search className="pointer-events-none absolute top-1/2 left-[13px] size-[18px] -translate-y-1/2 text-muted" />
           <input
             value={q}
@@ -183,7 +183,7 @@ function UsersPageInner() {
             {status === 'all' ? 'Filter' : STATUS_LABEL[status as AccountStatus]}
           </Button>
           {filterOpen ? (
-            <div className="absolute right-0 z-20 mt-2 w-52 rounded-control border border-line bg-white py-1.5 shadow-lg">
+            <div className="absolute left-0 z-20 mt-2 w-52 rounded-control sm:right-0 sm:left-auto border border-line bg-white py-1.5 shadow-lg">
               {FILTERS.map((f) => (
                 <button
                   key={f}

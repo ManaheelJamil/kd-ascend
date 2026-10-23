@@ -74,7 +74,7 @@ export default function CorporateDetailsPage() {
         <div className="flex items-start gap-[18px]">
           <BackButton onClick={() => router.push('/corporates')} />
           <div>
-            <h1 className="text-[27px] leading-8 font-bold text-ink">{corporate.name}</h1>
+            <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">{corporate.name}</h1>
             <p className="mt-1.5 text-[15.8px] text-muted">Joined on: {isoDay(corporate.createdAt)}</p>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function CorporateDetailsPage() {
         </div>
       </div>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         <SectionHeading tone="navy" title="Company Information">
           <SectionEditButton label="Edit company information" onClick={() => setEditing('company')} />
         </SectionHeading>
@@ -104,7 +104,7 @@ export default function CorporateDetailsPage() {
         </div>
       </Card>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         <SectionHeading tone="orange" title="Contact Person Details">
           <SectionEditButton label="Edit contact person" onClick={() => setEditing('contact')} />
         </SectionHeading>

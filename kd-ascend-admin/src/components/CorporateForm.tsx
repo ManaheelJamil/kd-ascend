@@ -57,19 +57,19 @@ export default function CorporateForm() {
       <div className="flex items-start gap-[18px]">
         <BackButton onClick={() => router.push('/corporates')} />
         <div>
-          <h1 className="text-[27px] leading-8 font-bold text-ink">Add Corporate</h1>
+          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">Add Corporate</h1>
           <p className="mt-1.5 text-[15.8px] text-muted">Add a corporate partner account</p>
         </div>
       </div>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         <SectionHeading tone="navy" title="Company Information" />
         <div className="mt-[27px]">
           <CompanyFields value={form} onChange={patch} errors={errors} showIndustry />
         </div>
       </Card>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         <SectionHeading tone="orange" title="Contact Person Details" />
         <div className="mt-[27px]">
           <ContactFields value={form} onChange={patch} errors={errors} />
@@ -78,13 +78,13 @@ export default function CorporateForm() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="flex gap-[18px]">
-        <Link href="/corporates">
-          <Button type="button" variant="outline" className="h-14 w-40 rounded-card text-lg font-medium">
+      <div className="flex gap-3 sm:gap-[18px]">
+        <Link href="/corporates" className="flex-1 sm:flex-none">
+          <Button type="button" variant="outline" className="h-14 w-full rounded-card text-lg font-medium sm:w-40">
             Cancel
           </Button>
         </Link>
-        <Button type="submit" loading={busy} className="h-[55px] w-[191px] rounded-card text-lg font-medium">
+        <Button type="submit" loading={busy} className="h-[55px] flex-1 rounded-card text-lg font-medium sm:w-[191px] sm:flex-none">
           Save Changes
         </Button>
       </div>

@@ -53,7 +53,7 @@ function Plain({ label, value }: { label: string; value?: string | null }) {
 
 function SectionCard({ title, onEdit, children }: { title: string; onEdit?: () => void; children: React.ReactNode }) {
   return (
-    <Card className="p-[37px]">
+    <Card className="p-5 sm:p-[37px]">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-[20.3px] font-bold text-ink">{title}</h2>
         {onEdit ? (
@@ -160,7 +160,7 @@ export default function UserDetailsPage() {
   const canDecide = user.status === 'under_review' || user.status === 'incomplete' || user.status === 'rejected';
 
   return (
-    <div className="flex flex-col gap-[40px]">
+    <div className="flex flex-col gap-6 md:gap-[40px]">
       {/* Title row */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-[18px]">
@@ -168,12 +168,12 @@ export default function UserDetailsPage() {
             type="button"
             onClick={() => (window.history.length > 1 ? router.back() : router.push('/users'))}
             aria-label="Back"
-            className="mt-1 grid size-[54px] place-items-center rounded-full bg-white text-ink transition hover:bg-line"
+            className="mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-white sm:size-[54px] text-ink transition hover:bg-line"
           >
             <ArrowLeft className="size-[22px]" />
           </button>
           <div>
-            <h1 className="text-[27px] leading-8 font-bold text-ink">User ID : {shortId(user.uid)}</h1>
+            <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">User ID : {shortId(user.uid)}</h1>
             <p className="mt-1 text-lg text-muted">Joined on {longDay(user.createdAt)}</p>
           </div>
         </div>
@@ -214,15 +214,15 @@ export default function UserDetailsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-[36px] xl:grid-cols-[minmax(0,1fr)_322px]">
+      <div className="grid gap-6 md:gap-[36px] xl:grid-cols-[minmax(0,1fr)_322px]">
         {/* Left column */}
-        <div className="flex flex-col gap-[36px]">
-          <Card className="p-[37px]">
+        <div className="flex flex-col gap-6 md:gap-[36px]">
+          <Card className="p-5 sm:p-[37px]">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-[17px]">
                 <Avatar letter={initial(user)} size={63} rounded="card" />
                 <div className="min-w-0">
-                  <h2 className="truncate text-[27px] font-bold text-ink">{displayName(user)}</h2>
+                  <h2 className="truncate text-[22px] font-bold sm:text-[27px] text-ink">{displayName(user)}</h2>
                   <StatusBadge status={user.status} className="mt-1" />
                 </div>
               </div>
@@ -315,11 +315,11 @@ export default function UserDetailsPage() {
           {canDecide ? (
             <div className="flex flex-wrap gap-[14px]">
               {user.status !== 'rejected' ? (
-                <Button variant="danger" size="lg" className="w-[166px]" onClick={() => setDialog('reject')}>
+                <Button variant="danger" size="lg" className="flex-1 sm:w-[166px] sm:flex-none" onClick={() => setDialog('reject')}>
                   Reject User
                 </Button>
               ) : null}
-              <Button variant="success" size="lg" className="w-[166px]" loading={approving} onClick={approve}>
+              <Button variant="success" size="lg" className="flex-1 sm:w-[166px] sm:flex-none" loading={approving} onClick={approve}>
                 Approve User
               </Button>
             </div>
@@ -327,7 +327,7 @@ export default function UserDetailsPage() {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-[36px]">
+        <div className="flex flex-col gap-6 md:gap-[36px]">
           <div className="rounded-card bg-brand p-[27px]">
             <h2 className="text-[20.3px] font-bold text-white">Summary</h2>
             <div className="mt-[30px] flex flex-col gap-[26px]">

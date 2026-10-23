@@ -76,9 +76,71 @@ export default function UsersTable({
     onSelectedChange(next);
   };
 
+  const actions = (u: UserDoc) => (
+    <div className="flex justify-end gap-1">
+      <Link
+        href={`/users/${u.uid}`}
+        aria-label="View / edit"
+        title="View / edit"
+        className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
+      >
+        <SquarePen className="size-[18px]" />
+      </Link>
+      {u.status === 'blacklisted' ? (
+        <IconButton label="Remove from blacklist" onClick={() => setRestoreTarget(u)} className="text-success">
+          <ShieldCheck className="size-[18px]" />
+        </IconButton>
+      ) : (
+        <IconButton label="Blacklist user" onClick={() => setBlacklistTarget(u)} className="text-danger">
+          <Ban className="size-[18px]" />
+        </IconButton>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <div className="overflow-x-auto">
+      {/* Phones: one card per user instead of the wide table. */}
+      <ul className="divide-y divide-line md:hidden">
+        {rows.length === 0 ? (
+          <li className="px-4 py-12 text-center text-[15px] text-muted">{emptyText}</li>
+        ) : (
+          rows.map((u) => (
+            <li
+              key={u.uid}
+              onClick={() => router.push(`/users/${u.uid}`)}
+              className="flex cursor-pointer items-start gap-3 px-4 py-3.5 active:bg-page"
+            >
+              {selectable ? (
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${displayName(u)}`}
+                  checked={selected?.has(u.uid) ?? false}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => toggle(u.uid)}
+                  className="mt-3 size-5 shrink-0 rounded border-[#d9d9d9]"
+                />
+              ) : null}
+              <Avatar letter={initial(u)} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="truncate text-[15px] font-semibold text-ink">{displayName(u)}</p>
+                  <StatusBadge status={u.status} />
+                </div>
+                <p className="truncate text-[13px] text-muted">{u.email}</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="truncate text-[12.5px] text-muted">
+                    {u.phone || '—'} · {isoDay(u.createdAt)}
+                  </p>
+                  <div onClick={(e) => e.stopPropagation()}>{actions(u)}</div>
+                </div>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
           <thead>
             <tr className="h-16 border-b border-line bg-page">
@@ -153,25 +215,7 @@ export default function UsersTable({
                   </td>
                   <td className="px-[18px] text-[13.5px] text-muted">{isoDay(u.createdAt)}</td>
                   <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-end gap-1">
-                      <Link
-                        href={`/users/${u.uid}`}
-                        aria-label="View / edit"
-                        title="View / edit"
-                        className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
-                      >
-                        <SquarePen className="size-[18px]" />
-                      </Link>
-                      {u.status === 'blacklisted' ? (
-                        <IconButton label="Remove from blacklist" onClick={() => setRestoreTarget(u)} className="text-success">
-                          <ShieldCheck className="size-[18px]" />
-                        </IconButton>
-                      ) : (
-                        <IconButton label="Blacklist user" onClick={() => setBlacklistTarget(u)} className="text-danger">
-                          <Ban className="size-[18px]" />
-                        </IconButton>
-                      )}
-                    </div>
+                    {actions(u)}
                   </td>
                 </tr>
               ))

@@ -127,10 +127,10 @@ export default function DocumentReviewModal({
         ) : null}
         {mode === 'review' ? (
           <>
-            <Button variant="danger" size="lg" className="w-[166px]" loading={busy === 'rejected'} disabled={!!busy} onClick={() => decide('rejected')}>
+            <Button variant="danger" size="lg" className="flex-1 sm:w-[166px] sm:flex-none" loading={busy === 'rejected'} disabled={!!busy} onClick={() => decide('rejected')}>
               Reject
             </Button>
-            <Button variant="success" size="lg" className="w-[166px]" loading={busy === 'verified'} disabled={!!busy} onClick={() => decide('verified')}>
+            <Button variant="success" size="lg" className="flex-1 sm:w-[166px] sm:flex-none" loading={busy === 'verified'} disabled={!!busy} onClick={() => decide('verified')}>
               Approve
             </Button>
           </>

@@ -28,11 +28,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {menuOpen ? (
         <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
       ) : null}
-      <div className="min-h-screen lg:pl-[324px]">
-        <Suspense fallback={<div className="h-[108px] border-b border-line" />}>
+      <div className="min-h-screen lg:pl-[260px] xl:pl-[324px]">
+        <Suspense fallback={<div className="h-[68px] border-b border-line md:h-[108px]" />}>
           <Header onMenu={() => setMenuOpen(true)} />
         </Suspense>
-        <main className="px-5 pt-[27px] pb-12 md:pr-[49px] md:pl-[27px]">{children}</main>
+        <main className="px-4 pt-5 pb-12 sm:px-5 md:pt-[27px] md:pr-[49px] md:pl-[27px]">{children}</main>
       </div>
     </UsersDataProvider>
   );

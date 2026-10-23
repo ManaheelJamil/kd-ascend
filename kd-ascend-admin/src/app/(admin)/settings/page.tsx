@@ -179,7 +179,7 @@ export default function SettingsPage() {
       <h1 className="text-[22.5px] leading-8 font-bold text-ink">Setting</h1>
 
       {/* Company logo */}
-      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-[50px]">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-[50px]">
         <div className="flex flex-col items-center gap-2.5 sm:pl-[21px]">
           <div className="relative size-[176px] shrink-0">
             <div className="grid size-full place-items-center overflow-hidden rounded-full bg-[#f5f2f2] p-6">
@@ -198,15 +198,15 @@ export default function SettingsPage() {
           <p className="text-[20.75px] leading-[23px] font-semibold text-ink">Company Logo</p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-4">
-            <Button type="button" onClick={pickLogo} className="w-[168px] shadow-brand">
+        <div className="flex w-full flex-col gap-3 sm:w-auto">
+          <div className="flex gap-3 sm:gap-4">
+            <Button type="button" onClick={pickLogo} className="flex-1 shadow-brand sm:w-[168px] sm:flex-none">
               Upload New
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="w-[168px]"
+              className="flex-1 sm:w-[168px] sm:flex-none"
               disabled={!pendingLogo}
               onClick={() => {
                 setPendingLogo(null);
@@ -243,7 +243,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Admin details */}
-      <Card className="flex flex-col gap-[27px] rounded-[18px] p-[28px]">
+      <Card className="flex flex-col gap-[27px] rounded-[18px] p-5 sm:p-[28px]">
         <h2 className="text-[20.25px] leading-8 font-bold text-ink">Admin Details</h2>
         <div className="grid gap-[27px] md:grid-cols-2">
           <CorpField label="Name" required error={errors.name}>
@@ -276,7 +276,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Password */}
-      <Card className="flex flex-col gap-[27px] rounded-[18px] p-[28px]">
+      <Card className="flex flex-col gap-[27px] rounded-[18px] p-5 sm:p-[28px]">
         <h2 className="text-[20.25px] leading-8 font-bold text-ink">Password</h2>
         <CorpField label="Old Password" error={errors.oldPassword}>
           <PasswordInput
@@ -328,7 +328,7 @@ export default function SettingsPage() {
       {error ? <p className={cn('rounded-card bg-danger/5 px-5 py-4 text-[15px] text-danger')}>{error}</p> : null}
 
       <div>
-        <Button type="submit" loading={busy} className="w-[168px] shadow-brand">
+        <Button type="submit" loading={busy} className="w-full shadow-brand sm:w-[168px]">
           Save Changes
         </Button>
       </div>

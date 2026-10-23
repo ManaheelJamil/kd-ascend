@@ -112,12 +112,12 @@ function EditCorporate() {
       <div className="flex items-start gap-[18px]">
         <BackButton onClick={() => router.push(`/corporates/${corporate.id}`)} />
         <div>
-          <h1 className="text-[27px] leading-8 font-bold text-ink">Edit Corporate</h1>
+          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">Edit Corporate</h1>
           <p className="mt-1.5 text-[15.8px] text-muted">Edit corporate partner account</p>
         </div>
       </div>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         {section === 'company' && form ? (
           <form onSubmit={save} className="flex flex-col gap-[27px]">
             <SectionHeading tone="navy" title="Company Information" />
@@ -135,7 +135,7 @@ function EditCorporate() {
         )}
       </Card>
 
-      <Card className="p-[28px]">
+      <Card className="p-5 sm:p-[28px]">
         {section === 'contact' && form ? (
           <form onSubmit={save} className="flex flex-col gap-[27px]">
             <SectionHeading tone="orange" title="Contact Person Details" />
