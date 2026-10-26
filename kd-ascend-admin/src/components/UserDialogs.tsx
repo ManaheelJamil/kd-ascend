@@ -5,6 +5,7 @@ import { Ban, CircleCheck, CircleX } from 'lucide-react';
 import { Button, Modal, TextArea } from './ui';
 import { blacklistUser, rejectUser, removeFromBlacklist } from '@/lib/users';
 import { displayName } from '@/lib/format';
+import { RESUBMIT_FIELDS } from '@/lib/resubmit';
 import type { UserDoc } from '@/lib/types';
 
 type DialogProps = { user: UserDoc | null; open: boolean; onClose: () => void; onDone?: () => void };
@@ -18,6 +19,36 @@ function Header({ tone, icon, title, subtitle }: { tone: 'red' | 'green'; icon: 
       <div>
         <h2 className="text-[22.5px] leading-8 font-bold text-ink">{title}</h2>
         <p className="text-[13.5px] text-muted">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Fields the user must fix": ticked fields become editable in the app's Resubmit form;
+ * everything else stays locked. Nothing ticked = the user can't resubmit.
+ */
+function FieldPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (key: string) => onChange(value.includes(key) ? value.filter((k) => k !== key) : [...value, key]);
+  return (
+    <div className="mt-5">
+      <p className="text-[15px] font-semibold text-ink">Fields the user must fix</p>
+      <p className="text-[13px] text-muted">
+        The user gets a Resubmit button in the app and can only change the ticked fields. Leave all unticked to block without a resubmit option.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {RESUBMIT_FIELDS.map((f) => {
+          const on = value.includes(f.key);
+          return (
+            <label
+              key={f.key}
+              className={`flex cursor-pointer items-center gap-2.5 rounded-control border px-3 py-2.5 text-[14.5px] transition ${on ? 'border-brand bg-brand/5 text-ink' : 'border-field text-muted hover:bg-page'}`}
+            >
+              <input type="checkbox" checked={on} onChange={() => toggle(f.key)} className="size-4 accent-[#ff7d4d]" />
+              {f.label}
+            </label>
+          );
+        })}
       </div>
     </div>
   );
@@ -45,10 +76,12 @@ function useAction(onClose: () => void, onDone?: () => void) {
 /** "Blacklist User" — asks for a reason. */
 export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
   const [reason, setReason] = useState('');
+  const [fields, setFields] = useState<string[]>([]);
   const { busy, error, run, setError } = useAction(onClose, onDone);
   useEffect(() => {
     if (open) {
       setReason('');
+      setFields([]);
       setError(null);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -56,7 +89,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <Header tone="red" icon={<Ban className="size-6" />} title="Blacklist User" subtitle="This action can be reversed later" />
         <p className="mt-[17px] text-lg text-muted">
           Are you sure you want to blacklist <b className="font-semibold text-ink">{displayName(user)}</b>? Please provide a reason.
@@ -68,6 +101,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
           onChange={(e) => setReason(e.target.value)}
           autoFocus
         />
+        <FieldPicker value={fields} onChange={setFields} />
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex gap-3">
           <Button
@@ -76,7 +110,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
             className="flex-1"
             loading={busy}
             disabled={!reason.trim()}
-            onClick={() => run(() => blacklistUser(user.uid, reason))}
+            onClick={() => run(() => blacklistUser(user.uid, reason, fields))}
           >
             Blacklist User
           </Button>
@@ -95,7 +129,7 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
   if (!user) return null;
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         {showReason ? (
           <>
             <Header tone="red" icon={<Ban className="size-6" />} title="Blacklist User" subtitle="This action can be reversed later" />
@@ -130,17 +164,19 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
 /** "Reject User" — reason is shown to the user in the app. */
 export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
   const [reason, setReason] = useState('');
+  const [fields, setFields] = useState<string[]>([]);
   const { busy, error, run, setError } = useAction(onClose, onDone);
   useEffect(() => {
     if (open) {
       setReason('');
+      setFields([]);
       setError(null);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!user) return null;
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <Header tone="red" icon={<CircleX className="size-6" />} title="Reject User" subtitle="The user will see this reason in the app" />
         <p className="mt-[17px] text-lg text-muted">
           Reject the application from <b className="font-semibold text-ink">{displayName(user)}</b>? Please provide a reason.
@@ -152,6 +188,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
           onChange={(e) => setReason(e.target.value)}
           autoFocus
         />
+        <FieldPicker value={fields} onChange={setFields} />
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex gap-3">
           <Button
@@ -160,7 +197,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
             className="flex-1"
             loading={busy}
             disabled={!reason.trim()}
-            onClick={() => run(() => rejectUser(user.uid, reason))}
+            onClick={() => run(() => rejectUser(user.uid, reason, fields))}
           >
             Reject User
           </Button>

@@ -29,6 +29,7 @@ import { EditContactModal, EditPersonalModal } from '@/components/EditUserModals
 import { approveUser, listDocuments, subscribeUser, type UserDocument } from '@/lib/users';
 import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
+import { resubmitLabels } from '@/lib/resubmit';
 
 function Info({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
   return (
@@ -182,7 +183,7 @@ export default function UserDetailsPage() {
             <ShieldCheck className="size-5" />
             Remove from Blacklist
           </Button>
-        ) : user.status === 'approved' ? (
+        ) : user.status === 'approved' || (user.status === 'under_review' && user.resubmittedFrom === 'blacklisted') ? (
           <Button variant="danger" size="lg" onClick={() => setDialog('blacklist')}>
             Blacklist User
           </Button>
@@ -198,6 +199,12 @@ export default function UserDetailsPage() {
             {user.blacklistedBy ? ` by ${user.blacklistedBy}` : ''}. Reason: {user.blacklistReason || 'No reason given.'}
             <br />
             This user is locked out of the app.
+            {user.resubmitFields?.length ? (
+              <>
+                <br />
+                They can resubmit from the app, changing only: <b>{resubmitLabels(user.resubmitFields)}</b>.
+              </>
+            ) : null}
           </div>
         </div>
       ) : user.status === 'rejected' ? (
@@ -205,6 +212,24 @@ export default function UserDetailsPage() {
           <CircleAlert className="mt-0.5 size-5 shrink-0" />
           <div>
             <b>Rejected</b> on {shortDay(user.rejectedAt)}. Reason: {user.rejectionReason || 'No reason given.'}
+            {user.resubmitFields?.length ? (
+              <>
+                <br />
+                They can resubmit from the app, changing only: <b>{resubmitLabels(user.resubmitFields)}</b>.
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : user.status === 'under_review' && user.resubmittedFrom ? (
+        <div className="flex items-start gap-3 rounded-card border border-brand/25 bg-brand/5 px-5 py-4 text-[15px] text-ink">
+          <CircleAlert className="mt-0.5 size-5 shrink-0 text-brand" />
+          <div>
+            <b>Resubmitted</b> on {shortDay(user.resubmittedAt)} after being{' '}
+            {user.resubmittedFrom === 'blacklisted' ? 'blacklisted' : 'rejected'}.
+            {user.resubmitFields?.length ? <> Updated: <b>{resubmitLabels(user.resubmitFields)}</b>.</> : null}
+            <br />
+            Earlier reason: {(user.resubmittedFrom === 'blacklisted' ? user.blacklistReason : user.rejectionReason) || '—'}. Check the
+            changes, then approve or {user.resubmittedFrom === 'blacklisted' ? 'blacklist' : 'reject'} again.
           </div>
         </div>
       ) : user.status === 'incomplete' ? (

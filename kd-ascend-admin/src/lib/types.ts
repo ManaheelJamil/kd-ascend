@@ -67,6 +67,11 @@ export type UserDoc = {
   blacklistedAt?: Timestamp | null;
   blacklistedBy?: string;
   blacklistReason?: string;
+  /** Fields the admin asked the user to fix (Resubmit in the app). See lib/resubmit.ts. */
+  resubmitFields?: string[];
+  /** Set by the app when a blocked / rejected user resubmits: the status they came from. */
+  resubmittedFrom?: 'blacklisted' | 'rejected';
+  resubmittedAt?: Timestamp | null;
 };
 
 export type StatusFilter = 'all' | AccountStatus;

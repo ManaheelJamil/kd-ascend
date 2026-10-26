@@ -12,6 +12,7 @@ import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, getSecondaryAuth, storage } from './firebase';
 import { firestoreFileUrl, isFirestoreFile, saveFileToFirestore } from './fileStore';
+import { resubmitLabels } from './resubmit';
 import type { Payout, PersonalInfo, StoredFile, UserDoc } from './types';
 
 const usersCol = collection(db, 'users');
@@ -63,31 +64,46 @@ export const approveUser = async (uid: string) => {
     approvedAt: serverTimestamp(),
     approvedBy: adminId(),
     rejectionReason: deleteField(),
+    // A blocked / rejected user who resubmitted and is now approved: clear the old decision.
+    blacklistReason: deleteField(),
+    blacklistedAt: deleteField(),
+    blacklistedBy: deleteField(),
+    resubmitFields: deleteField(),
+    resubmittedFrom: deleteField(),
     updatedAt: serverTimestamp(),
   });
   notify(uid, 'approved');
 };
 
-export const rejectUser = async (uid: string, reason: string) => {
+/** Reason text for the email, plus the fields the user should fix. */
+const withFields = (reason: string, fields: string[]) =>
+  fields.length ? `${reason.trim()} — Please update in the app (tap Resubmit): ${resubmitLabels(fields)}.` : reason.trim();
+
+/** fields = what the user may change when resubmitting (none = no Resubmit button). */
+export const rejectUser = async (uid: string, reason: string, fields: string[] = []) => {
   await updateDoc(userRef(uid), {
     status: 'rejected',
     rejectedAt: serverTimestamp(),
     rejectedBy: adminId(),
     rejectionReason: reason.trim(),
+    resubmitFields: fields.length ? fields : deleteField(),
+    resubmittedFrom: deleteField(),
     updatedAt: serverTimestamp(),
   });
-  notify(uid, 'rejected', reason);
+  notify(uid, 'rejected', withFields(reason, fields));
 };
 
-export const blacklistUser = async (uid: string, reason: string) => {
+export const blacklistUser = async (uid: string, reason: string, fields: string[] = []) => {
   await updateDoc(userRef(uid), {
     status: 'blacklisted',
     blacklistedAt: serverTimestamp(),
     blacklistedBy: adminId(),
     blacklistReason: reason.trim(),
+    resubmitFields: fields.length ? fields : deleteField(),
+    resubmittedFrom: deleteField(),
     updatedAt: serverTimestamp(),
   });
-  notify(uid, 'blacklisted', reason);
+  notify(uid, 'blacklisted', withFields(reason, fields));
 };
 
 /** "They will be able to access the platform again" → back to an approved account. */
@@ -99,6 +115,8 @@ export const removeFromBlacklist = async (uid: string) => {
     blacklistReason: deleteField(),
     blacklistedAt: deleteField(),
     blacklistedBy: deleteField(),
+    resubmitFields: deleteField(),
+    resubmittedFrom: deleteField(),
     updatedAt: serverTimestamp(),
   });
   notify(uid, 'restored');
