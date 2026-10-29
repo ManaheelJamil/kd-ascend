@@ -6,7 +6,8 @@ import TextField from '../components/TextField';
 import Button from '../components/Button';
 import ChannelModal, { type Channel } from '../components/ChannelModal';
 import { isEmail, toE164 } from '../utils/validation';
-import { sendPasswordResetLink } from '../services/otpService';
+import { sendPasswordResetLink, sendTestSmsResetCode } from '../services/otpService';
+import { isDevOtp } from '../services/devOtp';
 import ResultModal from '../components/ResultModal';
 import { isPhoneAvailable } from '../services/authService';
 import { phoneLockRemaining, sendSignInCode } from '../services/phoneService';
@@ -58,6 +59,19 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
       // SMS: Firebase sends the code to the number itself, so a phone number is required.
       if (isEmail(id)) {
         return closeWithError('To reset via SMS, please enter your registered phone number.');
+      }
+      // Test mode: no SMS is sent; the next screen accepts the fixed test code.
+      if (isDevOtp()) {
+        const res = await sendTestSmsResetCode(id);
+        if (res.status === 'locked') {
+          return closeWithError(
+            `You’ve entered the wrong code multiple times. Please try again after ${minutesFromSeconds(res.retryAfterSeconds)} minutes.`,
+          );
+        }
+        setSending(null);
+        setModal(false);
+        navigation.navigate('ResetVerify', { channel: 'sms', phone: id });
+        return;
       }
       const locked = await phoneLockRemaining(id);
       if (locked > 0) {

@@ -43,3 +43,12 @@ export const resetPasswordWithToken = (resetToken: string, newPassword: string) 
 /** Sends the "password changed" email after an SMS reset (best effort, never throws). */
 export const notifyPasswordChanged = () =>
   callFunction<{ sent: boolean }>('notifyPasswordChanged', {}).catch(() => ({ sent: false }));
+
+/**
+ * TEST MODE (config.devOtpCode set): "Forgot Password → Via SMS" with a fixed code.
+ * Nothing is sent; the server accepts its TEST_SMS_OTP code and returns a reset token.
+ */
+export const sendTestSmsResetCode = (phone: string) => callFunction<SendResult>('sendTestSmsResetCode', { phone });
+
+export const verifyTestSmsResetCode = (phone: string, code: string) =>
+  callFunction<VerifyResult<{ resetToken: string }>>('verifyTestSmsResetCode', { phone, code });

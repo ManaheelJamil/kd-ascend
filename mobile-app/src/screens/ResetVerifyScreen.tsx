@@ -8,7 +8,13 @@ import {
   registerWrongPhoneCode,
   sendSignInCode,
 } from '../services/phoneService';
-import { sendPasswordResetCode, verifyPasswordResetCode } from '../services/otpService';
+import {
+  sendPasswordResetCode,
+  sendTestSmsResetCode,
+  verifyPasswordResetCode,
+  verifyTestSmsResetCode,
+} from '../services/otpService';
+import { devOtpCode, isDevOtp } from '../services/devOtp';
 import { signOut } from '../services/authService';
 import { errorCode, friendlyError } from '../services/errors';
 import { config } from '../config';
@@ -25,7 +31,9 @@ export default function ResetVerifyScreen({ navigation, route }: ScreenProps<'Re
   }, [params]);
 
   const message =
-    params.channel === 'sms'
+    params.channel === 'sms' && isDevOtp()
+      ? `Test mode: no SMS is sent. Enter ${devOtpCode()} to reset the password for ${params.phone}.`
+      : params.channel === 'sms'
       ? `We’ve sent a 6-digit verification code to your registered phone number (${params.phone}).`
       : `We’ve sent a 6-digit verification code to (${params.destination})`;
 
@@ -34,6 +42,20 @@ export default function ResetVerifyScreen({ navigation, route }: ScreenProps<'Re
       if (params.channel === 'email') {
         try {
           const res = await verifyPasswordResetCode(params.identifier, code);
+          if (res.status === 'ok') {
+            navigation.replace('CreateNewPassword', { mode: 'email', resetToken: res.resetToken });
+            return { status: 'ok' };
+          }
+          return res;
+        } catch (e) {
+          return { status: 'error', message: friendlyError(e) };
+        }
+      }
+
+      // SMS in test mode: the server checks the fixed code and returns a reset token.
+      if (isDevOtp()) {
+        try {
+          const res = await verifyTestSmsResetCode(params.phone, code);
           if (res.status === 'ok') {
             navigation.replace('CreateNewPassword', { mode: 'email', resetToken: res.resetToken });
             return { status: 'ok' };
@@ -77,6 +99,12 @@ export default function ResetVerifyScreen({ navigation, route }: ScreenProps<'Re
     try {
       if (params.channel === 'email') {
         const res = await sendPasswordResetCode(params.identifier);
+        if (res.status === 'sent') return { status: 'sent', cooldownSeconds: res.cooldownSeconds };
+        if (res.status === 'cooldown' || res.status === 'locked') return res;
+        return { status: 'sent' };
+      }
+      if (isDevOtp()) {
+        const res = await sendTestSmsResetCode(params.phone);
         if (res.status === 'sent') return { status: 'sent', cooldownSeconds: res.cooldownSeconds };
         if (res.status === 'cooldown' || res.status === 'locked') return res;
         return { status: 'sent' };
