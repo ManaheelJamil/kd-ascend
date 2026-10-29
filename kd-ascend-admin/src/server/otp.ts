@@ -41,7 +41,7 @@ const RESET_LINK_TTL_MS = 24 * 60 * 60 * 1000;
 
 const appUrl = () => (process.env.APP_URL || 'https://kd-ascend.vercel.app').replace(/\/+$/, '');
 
-type Purpose = 'verify_email' | 'reset_password';
+type Purpose = 'verify_email' | 'reset_password' | 'reset_sms_test';
 
 type SendResult =
   | { status: 'sent'; destination: string; cooldownSeconds: number }
@@ -216,6 +216,20 @@ async function isSamePassword(email: string, password: string): Promise<boolean>
   }
 }
 
+/**
+ * TEST MODE ONLY: fixed SMS code for "Forgot Password → Via SMS".
+ * Turned on by setting the Vercel environment variable TEST_SMS_OTP (e.g. 123456).
+ * No SMS is sent; the app asks for that code instead. Remove the variable before launch:
+ * while it is set, anyone who knows a registered phone number can reset that account.
+ */
+function testSmsCode(): string {
+  const code = (process.env.TEST_SMS_OTP || '').trim();
+  if (!/^\d{6}$/.test(code)) {
+    throw new FnError('failed-precondition', 'SMS test mode is off on the server (TEST_SMS_OTP is not set).');
+  }
+  return code;
+}
+
 type Handler = (data: Record<string, unknown>, uid: string | null) => Promise<unknown>;
 
 function requireAuth(uid: string | null) {
@@ -322,6 +336,58 @@ export const handlers: Record<string, Handler> = {
     const user = await findUser(identifier);
     if (!user) return { status: 'expired' } satisfies VerifyResult;
     const result = await checkCode('reset_password', user.uid, code);
+    if (result.status !== 'ok') return result;
+    const resetToken = randomBytes(32).toString('hex');
+    await adminDb()
+      .collection('resetTokens')
+      .doc(sha256(resetToken))
+      .set({ uid: user.uid, expiresAt: Timestamp.fromMillis(Date.now() + RESET_TOKEN_TTL_MS) });
+    return { status: 'ok', resetToken };
+  },
+
+  /** TEST MODE: "sends" the fixed SMS code (nothing is sent). Same cooldown / lock rules as real codes. */
+  async sendTestSmsResetCode(data) {
+    const code = testSmsCode();
+    const phone = requireString(data, 'phone', 16);
+    if (!isE164(phone)) throw new FnError('invalid-argument', 'Please enter a valid phone number.');
+    const user = await findUser(phone);
+    if (!user) throw new FnError('not-found', 'No account found with this phone number.');
+    if (user.disabled) throw new FnError('permission-denied', 'This account has been disabled.');
+    const ref = otpRef('reset_sms_test', user.uid);
+    const now = Date.now();
+    return adminDb().runTransaction(async (tx) => {
+      const cur = (await tx.get(ref)).data() as OtpDoc | undefined;
+      if (cur?.lockedUntil && cur.lockedUntil.toMillis() > now) {
+        return { status: 'locked', retryAfterSeconds: secondsUntil(cur.lockedUntil, now) };
+      }
+      if (cur?.lastSentAt && now - cur.lastSentAt.toMillis() < RESEND_COOLDOWN_S * 1000) {
+        const left = Math.ceil((cur.lastSentAt.toMillis() + RESEND_COOLDOWN_S * 1000 - now) / 1000);
+        return { status: 'cooldown', destination: phone, retryAfterSeconds: left };
+      }
+      const salt = randomBytes(16).toString('hex');
+      const doc: OtpDoc = {
+        uid: user.uid,
+        purpose: 'reset_sms_test',
+        codeHash: sha256(`${salt}:${code}`),
+        salt,
+        expiresAt: Timestamp.fromMillis(now + CODE_TTL_MS),
+        attempts: 0,
+        lockedUntil: null,
+        lastSentAt: Timestamp.fromMillis(now),
+      };
+      tx.set(ref, doc);
+      return { status: 'sent', destination: phone, cooldownSeconds: RESEND_COOLDOWN_S };
+    });
+  },
+
+  /** TEST MODE: checks the fixed SMS code and returns a reset token (then resetPasswordWithToken). */
+  async verifyTestSmsResetCode(data) {
+    testSmsCode();
+    const phone = requireString(data, 'phone', 16);
+    const code = requireCode(data);
+    const user = isE164(phone) ? await findUser(phone) : null;
+    if (!user) return { status: 'expired' } satisfies VerifyResult;
+    const result = await checkCode('reset_sms_test', user.uid, code);
     if (result.status !== 'ok') return result;
     const resetToken = randomBytes(32).toString('hex');
     await adminDb()
