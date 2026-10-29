@@ -102,14 +102,28 @@ async function findUser(identifier: string): Promise<UserRecord | null> {
   }
   // Test OTP mode never links the phone to the Auth account, so also look up the
   // number saved on the profile (users/{uid}.phone) at sign-up.
-  const snap = await adminDb().collection('users').where('phone', '==', identifier).limit(1).get();
-  if (snap.empty) return null;
-  try {
-    return await adminAuth().getUser(snap.docs[0].id);
-  } catch (e) {
-    if ((e as { code?: string }).code === 'auth/user-not-found') return null;
-    throw e;
+  // Test accounts can share a number; pick the most complete one (approved first, then waiting
+  // for review, …, unfinished sign-ups last; newest wins a tie).
+  const snap = await adminDb().collection('users').where('phone', '==', identifier).limit(20).get();
+  const rank: Record<string, number> = { approved: 0, under_review: 1, rejected: 2, blacklisted: 3, incomplete: 4 };
+  const candidates = snap.docs
+    .map((d) => {
+      const u = d.data() as { status?: string; onboardingStep?: string; createdAt?: Timestamp };
+      return {
+        uid: d.id,
+        rank: (rank[u.status ?? 'incomplete'] ?? 5) * 2 + (u.onboardingStep === 'done' ? 0 : 1),
+        created: u.createdAt?.toMillis?.() ?? 0,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank || b.created - a.created);
+  for (const c of candidates) {
+    try {
+      return await adminAuth().getUser(c.uid);
+    } catch (e) {
+      if ((e as { code?: string }).code !== 'auth/user-not-found') throw e;
+    }
   }
+  return null;
 }
 
 async function issueCode(
