@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import type { UserDoc } from '../services/userService';
+import { isOnboardingComplete, type UserDoc } from '../services/userService';
 import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import type { OnboardingRoute, RootStackParamList } from './types';
 import { colors } from '../theme';
@@ -68,8 +68,9 @@ function computeTarget(
   // (the Account card shows "Unverified" until an admin approves again).
   // (Not after a resubmission from blocked / rejected: those wait for the admin first.)
   if (profile.status === 'under_review' && profile.approvedAt && !profile.resubmittedFrom) return { kind: 'app' };
-  // Finished onboarding and waiting for review → "Waiting for Approval".
-  if (profile.status === 'under_review' || (profile.onboardingStep === 'done' && profile.phoneVerified && profile.emailVerified)) {
+  // Finished onboarding (all details already saved) and waiting for review → "Waiting for Approval".
+  // A returning user, e.g. after a password reset, never fills the profile in again.
+  if (profile.status === 'under_review' || isOnboardingComplete(profile)) {
     return { kind: 'status' };
   }
   return { kind: 'onboarding', initial: firstOnboardingRoute(profile) };

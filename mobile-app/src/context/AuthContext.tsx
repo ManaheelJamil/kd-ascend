@@ -3,7 +3,7 @@ import { onAuthStateChanged, reload, type FirebaseAuthTypes } from '@react-nativ
 import { onSnapshot, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { auth } from '../firebase';
 import { getRememberMe, signOut } from '../services/authService';
-import { userRef, type UserDoc } from '../services/userService';
+import { isOnboardingComplete, markSubmitted, userRef, type UserDoc } from '../services/userService';
 import { isDevEmailOtp, isDevOtp, writeDevFlag, type DevFlags } from '../services/devOtp';
 
 type AuthContextValue = {
@@ -123,6 +123,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribe();
     };
   }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Profile fully filled in but never sent for review (e.g. the last step was interrupted):
+  // send it now, so the user waits for approval instead of redoing onboarding.
+  const submittedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user || !profile) return;
+    if (profile.status !== 'incomplete' && profile.status !== undefined) return;
+    if (!isOnboardingComplete(profile) || submittedFor.current === user.uid) return;
+    submittedFor.current = user.uid;
+    markSubmitted(user.uid).catch((e) => __DEV__ && console.warn('Could not submit for review', e));
+  }, [user, profile]);
 
   const lockRouting = useCallback(() => setRoutingLocked(true), []);
   const unlockRouting = useCallback(() => setRoutingLocked(false), []);

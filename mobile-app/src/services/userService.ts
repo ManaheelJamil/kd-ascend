@@ -120,6 +120,22 @@ export async function submitApplication(uid: string, payout: Payout) {
   });
 }
 
+/**
+ * True once every onboarding step has been saved (personal info, ID document and payout),
+ * so a returning user (e.g. after a password reset) never has to fill the profile in again.
+ */
+export const isOnboardingComplete = (p: UserDoc) =>
+  p.onboardingStep === 'done' || (!!p.profile?.fullName && !!p.identityDocument && !!p.payout);
+
+/** Sends a fully filled-in account that was never submitted to admin review. */
+export const markSubmitted = (uid: string) =>
+  updateDoc(userRef(uid), {
+    onboardingStep: 'done',
+    status: 'under_review',
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
 /* ---------- Account section (after approval) ---------- */
 
 // DEV BRANCH (Account section off): Edit Profile / Upload Document helpers.
