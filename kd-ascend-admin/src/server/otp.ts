@@ -98,6 +98,15 @@ async function findUser(identifier: string): Promise<UserRecord | null> {
     if (!isE164(identifier)) throw new FnError('invalid-argument', 'Please enter a valid email address or phone number.');
     return await adminAuth().getUserByPhoneNumber(identifier);
   } catch (e) {
+    if ((e as { code?: string }).code !== 'auth/user-not-found') throw e;
+  }
+  // Test OTP mode never links the phone to the Auth account, so also look up the
+  // number saved on the profile (users/{uid}.phone) at sign-up.
+  const snap = await adminDb().collection('users').where('phone', '==', identifier).limit(1).get();
+  if (snap.empty) return null;
+  try {
+    return await adminAuth().getUser(snap.docs[0].id);
+  } catch (e) {
     if ((e as { code?: string }).code === 'auth/user-not-found') return null;
     throw e;
   }
