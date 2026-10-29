@@ -6,11 +6,17 @@ android/
 *.log
 .env*
 
-# Firebase config files (download from the Firebase console — keep them out of git if the repo is public)
-google-services.json
-GoogleService-Info.plist
+# Firebase app config (google-services.json) is committed on purpose: EAS cloud builds only
+# receive files tracked by git. It holds public client identifiers, not secrets —
+# data is protected by firestore.rules. Never commit service-account keys (see below).
 
 functions/lib/
 functions/node_modules/
 functions/.secret.local
 .firebase/
+
+# Firebase service-account keys and built apps (never commit)
+*firebase-adminsdk*.json
+serviceAccount*.json
+*.apk
+*.aab

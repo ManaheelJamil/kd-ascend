@@ -3,6 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Admins are listed in /admins/{uid}. Manage them from the admin dashboard
+    // or the Firebase console (add a document whose ID is the person's Auth UID).
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     match /users/{uid} {
       function isOwner() {
         return request.auth != null && request.auth.uid == uid;
@@ -15,29 +22,101 @@ service cloud.firestore {
         return request.resource.data.phoneVerified == false
           || request.auth.token.phone_number == request.resource.data.phone;
       }
-      // Clients may only move the account from "incomplete" to "under_review".
+      // Users may only send their own account to "under_review": after sign-up (from "incomplete"),
+      // after editing their profile / uploading a new document (from "approved"), or — when an admin
+      // ticked fields to fix — by resubmitting after being blacklisted / rejected.
+      // Approving, rejecting and blacklisting are admin-only.
+      function isResubmit() {
+        return resource.data.status in ['blacklisted', 'rejected']
+          && request.resource.data.status == 'under_review'
+          && resource.data.get('resubmitFields', []).size() > 0
+          && request.resource.data.resubmittedFrom == resource.data.status;
+      }
       function statusOk() {
-        return unchanged('status')
-          || (resource.data.status == 'incomplete' && request.resource.data.status == 'under_review');
+        return (unchanged('status') && unchanged('resubmittedFrom'))
+          || (resource.data.status in ['incomplete', 'approved'] && request.resource.data.status == 'under_review'
+              && unchanged('resubmittedFrom'))
+          || isResubmit();
+      }
+      // Fields the mobile app is allowed to write on its own profile.
+      function onlyAppFields() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'phone', 'phoneVerified', 'onboardingStep', 'status', 'profile',
+          'identityDocument', 'payout', 'testVerification', 'updatedAt', 'submittedAt',
+          'resubmittedFrom', 'resubmittedAt'
+        ]);
       }
 
-      allow read: if isOwner();
+      allow read: if isOwner() || isAdmin();
 
-      allow create: if isOwner()
+      allow create: if isAdmin() || (isOwner()
         && request.resource.data.uid == uid
         && request.resource.data.emailVerified == false
         && request.resource.data.phoneVerified == false
-        && request.resource.data.status == 'incomplete';
+        && request.resource.data.status == 'incomplete');
 
-      allow update: if isOwner()
-        && unchanged('uid')
-        && unchanged('email')
-        && unchanged('emailVerified')   // set only by the verifyEmailCode function
+      allow update: if isAdmin() || (isOwner()
+        && onlyAppFields()
         && (unchanged('phone') || resource.data.phoneVerified == false)
         && (unchanged('phoneVerified') || phoneOk())
-        && statusOk();
+        && statusOk());
 
-      allow delete: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{adminUid} {
+      allow read: if request.auth != null && (request.auth.uid == adminUid || isAdmin());
+      // Existing admins can add or remove admins.
+      allow create, update, delete: if isAdmin();
+      // One-time setup: the very first admin creates their own entry together with /config/admin.
+      allow create: if request.auth != null
+        && request.auth.uid == adminUid
+        && !exists(/databases/$(database)/documents/config/admin)
+        && existsAfter(/databases/$(database)/documents/config/admin);
+    }
+
+    match /config/admin {
+      // Lets the dashboard know whether first-time setup is still open.
+      allow get: if true;
+      allow create: if request.auth != null
+        && !exists(/databases/$(database)/documents/config/admin)
+        && existsAfter(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow update, delete: if false;
+    }
+
+    // Uploaded files (ID documents, bank statements) stored inside Firestore — see
+    // src/services/fileStore.ts. Readable only by the owner and admins.
+    match /userFiles/{fileId} {
+      function fileOwner() {
+        return get(/databases/$(database)/documents/userFiles/$(fileId)).data.owner;
+      }
+      allow read: if request.auth != null && (resource.data.owner == request.auth.uid || isAdmin());
+      allow create: if request.auth != null
+        && (request.resource.data.owner == request.auth.uid || isAdmin());
+      allow update: if request.auth != null
+        && (resource.data.owner == request.auth.uid || isAdmin())
+        && request.resource.data.owner == resource.data.owner;
+      allow delete: if isAdmin();
+
+      match /chunks/{chunkId} {
+        allow read: if request.auth != null && (fileOwner() == request.auth.uid || isAdmin());
+        allow create: if request.auth != null && (fileOwner() == request.auth.uid || isAdmin())
+          && request.resource.data.data is string;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Dashboard settings (e.g. /settings/branding with the company logo).
+    // Readable by anyone so the logo can be shown everywhere; only admins can change it.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Corporate partners: managed from the admin dashboard only.
+    match /corporates/{corporateId} {
+      allow read, write: if isAdmin();
     }
 
     // One-time codes and reset tokens: Cloud Functions only.
