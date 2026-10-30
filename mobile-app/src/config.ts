@@ -13,11 +13,10 @@ export const config = {
   apiBaseUrl: 'https://kd-ascend.vercel.app' as string,
 
   /**
-   * Prefix used when someone types a local number without "+".
-   * "+92" for Pakistan. Use "+65" for Singapore, etc.
-   * A leading 0 is dropped first, so "03468919142" becomes "+92 3468919142" with "+92".
+   * Country selected by default in the Sign Up phone picker.
+   * "+65" for Singapore, "+92" for Pakistan (users can still switch in the picker).
    */
-  defaultCountryCode: '+92',
+  defaultCountryCode: '+65',
 
   /**
    * TEST OTP MODE: phone and email verification accept this code and nothing is sent.

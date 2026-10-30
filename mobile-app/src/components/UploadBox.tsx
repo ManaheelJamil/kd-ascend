@@ -63,7 +63,8 @@ export default function UploadBox({ value, onPress, error, loading }: Props) {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   box: {
-    height: 187,
+    // Grows with its content, so the button never sits on top of the text (small or large fonts).
+    minHeight: 187,
     borderRadius: 13.27,
     borderWidth: 2.04,
     borderStyle: 'dashed',
@@ -71,16 +72,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: 'center',
     paddingTop: 22.5,
+    paddingBottom: 22,
     paddingHorizontal: 16,
   },
   boxError: { borderColor: colors.error },
   thumb: { width: 50, height: 50, borderRadius: 8 },
   texts: { marginTop: 9, alignItems: 'center', gap: 7.66 },
-  primary: { fontFamily: fonts.semibold, fontSize: 15.32, color: colors.text, textAlign: 'center' },
-  secondary: { fontFamily: fonts.regular, fontSize: 13.27, color: colors.grey, textAlign: 'center' },
+  primary: { fontFamily: fonts.semibold, fontSize: 15.32, lineHeight: 21, color: colors.text, textAlign: 'center' },
+  secondary: { fontFamily: fonts.regular, fontSize: 13.27, lineHeight: 18, color: colors.grey, textAlign: 'center' },
   browse: {
-    position: 'absolute',
-    bottom: 22,
+    marginTop: 16,
     alignSelf: 'center',
     borderWidth: 1.02,
     borderColor: colors.grey,
