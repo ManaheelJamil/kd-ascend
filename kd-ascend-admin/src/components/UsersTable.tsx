@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Ban, ChevronDown, ShieldCheck, SquarePen } from 'lucide-react';
+import { Ban, ChevronDown, ShieldCheck, SquarePen, Trash2 } from 'lucide-react';
 import { Avatar, IconButton, StatusBadge, cn } from './ui';
-import { BlacklistDialog, RemoveBlacklistDialog } from './UserDialogs';
+import { BlacklistDialog, DeleteUserDialog, RemoveBlacklistDialog } from './UserDialogs';
 import { displayName, initial, isoDay, toDate } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 
@@ -52,6 +52,7 @@ export default function UsersTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'joined', dir: -1 });
   const [blacklistTarget, setBlacklistTarget] = useState<UserDoc | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<UserDoc | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserDoc | null>(null);
 
   const rows = useMemo(
     () =>
@@ -95,6 +96,9 @@ export default function UsersTable({
           <Ban className="size-[18px]" />
         </IconButton>
       )}
+      <IconButton label="Delete user" onClick={() => setDeleteTarget(u)} className="text-danger">
+        <Trash2 className="size-[18px]" />
+      </IconButton>
     </div>
   );
 
@@ -226,6 +230,7 @@ export default function UsersTable({
 
       <BlacklistDialog user={blacklistTarget} open={!!blacklistTarget} onClose={() => setBlacklistTarget(null)} />
       <RemoveBlacklistDialog user={restoreTarget} open={!!restoreTarget} onClose={() => setRestoreTarget(null)} />
+      <DeleteUserDialog user={deleteTarget} open={!!deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }

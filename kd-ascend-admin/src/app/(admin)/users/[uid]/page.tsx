@@ -20,10 +20,11 @@ import {
   Phone,
   ShieldCheck,
   SquarePen,
+  Trash2,
   User,
 } from 'lucide-react';
 import { Avatar, Button, Card, ErrorNote, FullPageSpinner, StatusBadge, cn } from '@/components/ui';
-import { BlacklistDialog, RejectDialog, RemoveBlacklistDialog } from '@/components/UserDialogs';
+import { BlacklistDialog, DeleteUserDialog, RejectDialog, RemoveBlacklistDialog } from '@/components/UserDialogs';
 import DocumentReviewModal from '@/components/DocumentReviewModal';
 import { EditContactModal, EditPersonalModal } from '@/components/EditUserModals';
 import { approveUser, listDocuments, subscribeUser, type UserDocument } from '@/lib/users';
@@ -108,7 +109,7 @@ export default function UserDetailsPage() {
   const [user, setUser] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<'blacklist' | 'unblacklist' | 'reject' | 'contact' | 'personal' | null>(null);
+  const [dialog, setDialog] = useState<'blacklist' | 'unblacklist' | 'reject' | 'contact' | 'personal' | 'delete' | null>(null);
   const [doc, setDoc] = useState<{ item: UserDocument; mode: 'view' | 'review' } | null>(null);
   const [approving, setApproving] = useState(false);
 
@@ -178,16 +179,22 @@ export default function UserDetailsPage() {
             <p className="mt-1 text-lg text-muted">Joined on {longDay(user.createdAt)}</p>
           </div>
         </div>
-        {user.status === 'blacklisted' ? (
-          <Button variant="success" className="h-[51px] px-6 font-semibold" onClick={() => setDialog('unblacklist')}>
-            <ShieldCheck className="size-5" />
-            Remove from Blacklist
+        <div className="flex flex-wrap gap-3">
+          {user.status === 'blacklisted' ? (
+            <Button variant="success" className="h-[51px] px-6 font-semibold" onClick={() => setDialog('unblacklist')}>
+              <ShieldCheck className="size-5" />
+              Remove from Blacklist
+            </Button>
+          ) : user.status === 'approved' || (user.status === 'under_review' && user.resubmittedFrom === 'blacklisted') ? (
+            <Button variant="danger" size="lg" onClick={() => setDialog('blacklist')}>
+              Blacklist User
+            </Button>
+          ) : null}
+          <Button variant="outline" className="h-[51px] border-danger px-6 font-semibold text-danger" onClick={() => setDialog('delete')}>
+            <Trash2 className="size-5" />
+            Delete User
           </Button>
-        ) : user.status === 'approved' || (user.status === 'under_review' && user.resubmittedFrom === 'blacklisted') ? (
-          <Button variant="danger" size="lg" onClick={() => setDialog('blacklist')}>
-            Blacklist User
-          </Button>
-        ) : null}
+        </div>
       </div>
 
       {/* Status notes */}
@@ -410,6 +417,7 @@ export default function UserDetailsPage() {
       <BlacklistDialog user={user} open={dialog === 'blacklist'} onClose={() => setDialog(null)} />
       <RemoveBlacklistDialog user={user} open={dialog === 'unblacklist'} onClose={() => setDialog(null)} showReason />
       <RejectDialog user={user} open={dialog === 'reject'} onClose={() => setDialog(null)} />
+      <DeleteUserDialog user={user} open={dialog === 'delete'} onClose={() => setDialog(null)} onDone={() => router.replace('/users')} />
       <EditContactModal user={user} open={dialog === 'contact'} onClose={() => setDialog(null)} />
       <EditPersonalModal user={user} open={dialog === 'personal'} onClose={() => setDialog(null)} />
       {openDoc ? <DocumentReviewModal user={user} document={openDoc} mode={doc!.mode} onClose={() => setDoc(null)} /> : null}

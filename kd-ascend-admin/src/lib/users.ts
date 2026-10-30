@@ -40,6 +40,28 @@ function notify(uid: string, event: NotifyEvent, reason?: string) {
     .catch((e) => console.warn('Notification email not sent', e));
 }
 
+/**
+ * Permanently deletes a user: login account, profile, uploaded files and pending codes.
+ * Runs on the server (/api/admin/delete-user) because only it can remove the login account.
+ */
+export async function deleteUser(uid: string): Promise<void> {
+  const current = auth.currentUser;
+  if (!current) throw new Error('Please sign in again.');
+  const token = await current.getIdToken();
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ uid }),
+    });
+  } catch {
+    throw new Error('Network error. Check your connection and try again.');
+  }
+  const body = (await res.json().catch(() => null)) as { deleted?: boolean; error?: string } | null;
+  if (!res.ok || !body?.deleted) throw new Error(body?.error || 'Could not delete the user. Please try again.');
+}
+
 /** Live list of every user document. */
 export function subscribeUsers(onData: (users: UserDoc[]) => void, onError: (e: Error) => void): Unsubscribe {
   return onSnapshot(

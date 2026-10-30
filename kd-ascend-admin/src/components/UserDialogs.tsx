@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Ban, CircleCheck, CircleX } from 'lucide-react';
+import { Ban, CircleCheck, CircleX, Trash2 } from 'lucide-react';
 import { Button, Modal, TextArea } from './ui';
-import { blacklistUser, rejectUser, removeFromBlacklist } from '@/lib/users';
+import { blacklistUser, deleteUser, rejectUser, removeFromBlacklist } from '@/lib/users';
 import { displayName } from '@/lib/format';
 import { RESUBMIT_FIELDS } from '@/lib/resubmit';
 import type { UserDoc } from '@/lib/types';
@@ -115,6 +115,59 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
             Blacklist User
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** "Delete User" — permanent; the admin types DELETE to confirm. */
+export function DeleteUserDialog({ user, open, onClose, onDone }: DialogProps) {
+  const [confirm, setConfirm] = useState('');
+  const { busy, error, run, setError } = useAction(onClose, onDone);
+  useEffect(() => {
+    if (open) {
+      setConfirm('');
+      setError(null);
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!user) return null;
+  const ok = confirm.trim().toUpperCase() === 'DELETE';
+
+  return (
+    <Modal open={open} onClose={busy ? () => undefined : onClose}>
+      <div className="p-5 sm:p-8">
+        <Header tone="red" icon={<Trash2 className="size-6" />} title="Delete User" subtitle="This can’t be undone" />
+        <p className="mt-[17px] text-lg text-muted">
+          Permanently delete <b className="font-semibold text-ink">{displayName(user)}</b>
+          {user.email ? <> ({user.email})</> : null}? Their login, profile, documents and payment details are removed, and
+          they’ll need to sign up again to use the app.
+        </p>
+        <label className="mt-5 block text-[15px] text-ink">
+          Type <b>DELETE</b> to confirm
+          <input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoFocus
+            className="mt-2 h-[52px] w-full rounded-control border border-field px-4 text-lg outline-none focus:border-danger"
+            placeholder="DELETE"
+          />
+        </label>
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        <div className="mt-6 flex gap-3">
+          <Button
+            variant="danger"
+            size="lg"
+            className="flex-1"
+            loading={busy}
+            disabled={!ok}
+            onClick={() => run(() => deleteUser(user.uid))}
+          >
+            Delete User
+          </Button>
+          <Button variant="outline" size="lg" onClick={onClose} disabled={busy} className="font-medium">
             Cancel
           </Button>
         </div>
