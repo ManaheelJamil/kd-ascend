@@ -105,7 +105,7 @@ export default function UsersTable({
   return (
     <>
       {/* Phones: one card per user instead of the wide table. */}
-      <ul className="divide-y divide-line md:hidden">
+      <ul className="divide-y divide-line xl:hidden">
         {rows.length === 0 ? (
           <li className="px-4 py-12 text-center text-[15px] text-muted">{emptyText}</li>
         ) : (
@@ -144,8 +144,8 @@ export default function UsersTable({
         )}
       </ul>
 
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
+      <div className="hidden overflow-x-auto xl:block">
+        <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
           <thead>
             <tr className="h-16 border-b border-line bg-page">
               {COLUMNS.map((col, i) => (

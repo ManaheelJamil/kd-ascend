@@ -227,7 +227,7 @@ export default function AddUserPage() {
         </div>
       </div>
 
-      <div className="grid gap-[27px] xl:grid-cols-[minmax(0,700px)_336px]">
+      <div className="grid gap-[27px] 2xl:grid-cols-[minmax(0,700px)_336px]">
         <div className="flex flex-col gap-[27px]">
           <Card className="flex items-center gap-[18px] p-5 sm:p-[28px]">
             <span className="grid size-[54px] shrink-0 place-items-center rounded-card bg-linear-to-r from-brand to-brand-light text-white">
@@ -363,7 +363,7 @@ export default function AddUserPage() {
           </div>
         </div>
 
-        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-[27px] text-white xl:sticky xl:top-[135px]">
+        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-[27px] text-white 2xl:sticky 2xl:top-[135px]">
           <h2 className="text-lg font-bold">Instructions</h2>
           <div className="mt-6 flex flex-col gap-[22px] text-[13.5px] leading-[18px]">
             <div>
