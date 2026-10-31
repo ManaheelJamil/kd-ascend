@@ -18,6 +18,7 @@ type Props = {
 export default function SelectModal({ visible, title, options, value, onSelect, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   useEffect(() => {
     if (visible) setQuery('');
   }, [visible]);
@@ -37,7 +38,7 @@ export default function SelectModal({ visible, title, options, value, onSelect, 
           <CloseButton onPress={onClose} />
         </View>
         {searchable ? (
-          <View style={styles.search}>
+          <View style={[styles.search, searchFocused && { borderColor: colors.main, borderWidth: 1.5 }]}>
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -45,6 +46,10 @@ export default function SelectModal({ visible, title, options, value, onSelect, 
               placeholderTextColor={colors.grey}
               style={styles.searchInput}
               autoCorrect={false}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              selectionColor={colors.main}
+              cursorColor={colors.main}
             />
           </View>
         ) : null}

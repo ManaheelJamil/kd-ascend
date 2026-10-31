@@ -1,21 +1,22 @@
 export const GENDERS = ['Male', 'Female'] as const;
 
+/** Banks for payouts: Singapore banks only (local banks and Singapore branches of foreign banks). */
 export const SINGAPORE_BANKS = [
-  'DBS / POSB',
-  'OCBC',
-  'UOB',
-  'Standard Chartered',
-  'HSBC',
-  'Citibank',
-  'Maybank',
-  'CIMB',
-  'RHB',
-  'Bank of China',
-  'ICBC',
+  'DBS Bank',
+  'POSB Bank',
+  'OCBC Bank',
+  'UOB (United Overseas Bank)',
+  'Standard Chartered Bank (Singapore)',
+  'HSBC Bank (Singapore)',
+  'Citibank Singapore',
+  'Maybank Singapore',
+  'CIMB Bank Singapore',
+  'RHB Bank Singapore',
+  'Bank of China (Singapore)',
+  'ICBC (Singapore)',
   'Trust Bank',
   'GXS Bank',
   'MariBank',
-  'Other',
 ] as const;
 
 export const COUNTRIES = [

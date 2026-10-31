@@ -31,7 +31,9 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
   ref,
 ) {
   const [hidden, setHidden] = useState(true);
-  const boxStyle = [styles.box, !!error && styles.boxError];
+  const [focused, setFocused] = useState(false);
+  // Orange border while typing (the error style wins so a wrong field stays red).
+  const boxStyle = [styles.box, focused && styles.boxFocused, !!error && styles.boxError];
 
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -61,6 +63,16 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
             secureTextEntry={password ? hidden : inputProps.secureTextEntry}
             autoCapitalize={password ? 'none' : inputProps.autoCapitalize}
             autoCorrect={password ? false : inputProps.autoCorrect}
+            onFocus={(e) => {
+              setFocused(true);
+              inputProps.onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              inputProps.onBlur?.(e);
+            }}
+            selectionColor={colors.main}
+            cursorColor={colors.main}
             style={styles.input}
           />
           {password ? (
@@ -99,6 +111,7 @@ const styles = StyleSheet.create({
     paddingRight: 14,
     overflow: 'hidden',
   },
+  boxFocused: { borderColor: colors.main, borderWidth: 1.5 },
   boxError: { borderColor: colors.error, backgroundColor: colors.errorBg },
   input: {
     ...text.input,
