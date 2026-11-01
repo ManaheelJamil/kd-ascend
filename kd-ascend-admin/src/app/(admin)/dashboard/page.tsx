@@ -118,7 +118,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-[27px] xl:grid-cols-2">
-        <Card className="p-[22.5px]">
+        <Card className="p-4 sm:p-[22.5px]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-ink">Sign-ups Overview</h2>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-[22.5px]">
+        <Card className="p-4 sm:p-[22.5px]">
           <h2 className="text-lg font-bold text-ink">Users by Status</h2>
           <p className="text-[13.5px] text-muted">Where every account stands</p>
           <div className="mt-6 flex flex-col gap-[18px]">
@@ -159,7 +159,7 @@ export default function DashboardPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between gap-3 p-[22.5px]">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-[22.5px]">
           <div>
             <h2 className="text-lg font-bold text-ink">Recent Users</h2>
             <p className="text-[13.5px] text-muted">Latest registrations</p>

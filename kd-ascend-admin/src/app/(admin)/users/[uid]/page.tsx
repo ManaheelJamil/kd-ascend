@@ -179,18 +179,18 @@ export default function UserDetailsPage() {
             <p className="mt-1 text-lg text-muted">Joined on {longDay(user.createdAt)}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-wrap gap-3 sm:w-auto">
           {user.status === 'blacklisted' ? (
-            <Button variant="success" className="h-[51px] px-6 font-semibold" onClick={() => setDialog('unblacklist')}>
+            <Button variant="success" className="h-[51px] flex-1 px-6 font-semibold sm:flex-none" onClick={() => setDialog('unblacklist')}>
               <ShieldCheck className="size-5" />
               Remove from Blacklist
             </Button>
           ) : user.status === 'approved' || (user.status === 'under_review' && user.resubmittedFrom === 'blacklisted') ? (
-            <Button variant="danger" size="lg" onClick={() => setDialog('blacklist')}>
+            <Button variant="danger" size="lg" className="flex-1 sm:flex-none" onClick={() => setDialog('blacklist')}>
               Blacklist User
             </Button>
           ) : null}
-          <Button variant="outline" className="h-[51px] border-danger px-6 font-semibold text-danger" onClick={() => setDialog('delete')}>
+          <Button variant="outline" className="h-[51px] flex-1 border-danger px-6 font-semibold text-danger sm:flex-none" onClick={() => setDialog('delete')}>
             <Trash2 className="size-5" />
             Delete User
           </Button>
@@ -360,7 +360,7 @@ export default function UserDetailsPage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-6 md:gap-[36px]">
-          <div className="rounded-card bg-brand p-[27px]">
+          <div className="rounded-card bg-brand p-5 sm:p-[27px]">
             <h2 className="text-[20.3px] font-bold text-white">Summary</h2>
             <div className="mt-[30px] flex flex-col gap-[26px]">
               <SummaryRow label="Total Jobs" value="0" />
@@ -375,14 +375,14 @@ export default function UserDetailsPage() {
             </div>
           </div>
 
-          <Card className="p-[27px]">
+          <Card className="p-5 sm:p-[27px]">
             <h2 className="text-[20.3px] font-bold text-ink">Recent Jobs</h2>
             <div className="mt-6 rounded-card bg-tile px-[18px] py-6 text-center text-[13.5px] text-muted">
               No jobs yet. Jobs will appear here once the Jobs module is live.
             </div>
           </Card>
 
-          <Card className="p-[27px]">
+          <Card className="p-5 sm:p-[27px]">
             <h2 className="text-[20.3px] font-bold text-ink">Account Information</h2>
             <dl className="mt-6 flex flex-col gap-[14px] text-[15.8px]">
               <div className="flex items-center justify-between gap-3">

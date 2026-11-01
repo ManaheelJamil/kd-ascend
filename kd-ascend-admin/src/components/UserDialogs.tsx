@@ -13,11 +13,11 @@ type DialogProps = { user: UserDoc | null; open: boolean; onClose: () => void; o
 function Header({ tone, icon, title, subtitle }: { tone: 'red' | 'green'; icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div className="flex items-start gap-[13px]">
-      <span className={`grid size-[54px] shrink-0 place-items-center rounded-full ${tone === 'red' ? 'bg-[#ffe2e2] text-danger' : 'bg-[#dcfce7] text-success'}`}>
+      <span className={`grid size-12 sm:size-[54px] shrink-0 place-items-center rounded-full ${tone === 'red' ? 'bg-[#ffe2e2] text-danger' : 'bg-[#dcfce7] text-success'}`}>
         {icon}
       </span>
       <div>
-        <h2 className="text-[22.5px] leading-8 font-bold text-ink">{title}</h2>
+        <h2 className="text-[20px] leading-7 font-bold text-ink sm:text-[22.5px] sm:leading-8">{title}</h2>
         <p className="text-[13.5px] text-muted">{subtitle}</p>
       </div>
     </div>
@@ -91,7 +91,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
     <Modal open={open} onClose={onClose}>
       <div className="p-5 sm:p-8">
         <Header tone="red" icon={<Ban className="size-6" />} title="Blacklist User" subtitle="This action can be reversed later" />
-        <p className="mt-[17px] text-lg text-muted">
+        <p className="mt-[17px] text-base text-muted sm:text-lg">
           Are you sure you want to blacklist <b className="font-semibold text-ink">{displayName(user)}</b>? Please provide a reason.
         </p>
         <TextArea
@@ -103,7 +103,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
         />
         <FieldPicker value={fields} onChange={setFields} />
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
           <Button
             variant="danger"
             size="lg"
@@ -140,7 +140,7 @@ export function DeleteUserDialog({ user, open, onClose, onDone }: DialogProps) {
     <Modal open={open} onClose={busy ? () => undefined : onClose}>
       <div className="p-5 sm:p-8">
         <Header tone="red" icon={<Trash2 className="size-6" />} title="Delete User" subtitle="This can’t be undone" />
-        <p className="mt-[17px] text-lg text-muted">
+        <p className="mt-[17px] text-base text-muted sm:text-lg">
           Permanently delete <b className="font-semibold text-ink">{displayName(user)}</b>
           {user.email ? <> ({user.email})</> : null}? Their login, profile, documents and payment details are removed, and
           they’ll need to sign up again to use the app.
@@ -156,7 +156,7 @@ export function DeleteUserDialog({ user, open, onClose, onDone }: DialogProps) {
           />
         </label>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
           <Button
             variant="danger"
             size="lg"
@@ -186,7 +186,7 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
         {showReason ? (
           <>
             <Header tone="red" icon={<Ban className="size-6" />} title="Blacklist User" subtitle="This action can be reversed later" />
-            <p className="mt-[17px] text-lg text-muted">
+            <p className="mt-[17px] text-base text-muted sm:text-lg">
               <b className="font-semibold text-ink">{displayName(user)}</b> is Blacklisted. Provided reason:
             </p>
             <TextArea className="mt-5 h-[120px] rounded-card text-lg" value={user.blacklistReason || 'No reason given.'} readOnly />
@@ -194,14 +194,14 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
         ) : (
           <>
             <Header tone="green" icon={<CircleCheck className="size-6" />} title="Remove from Blacklist" subtitle="Restore user access" />
-            <p className="mt-[17px] text-lg text-muted">
+            <p className="mt-[17px] text-base text-muted sm:text-lg">
               Are you sure you want to remove <b className="font-semibold text-ink">{displayName(user)}</b> from the blacklist? They will be
               able to access the platform again.
             </p>
           </>
         )}
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
           <Button variant="success" size="lg" className="flex-1" loading={busy} onClick={() => run(() => removeFromBlacklist(user.uid))}>
             Remove from Blacklist
           </Button>
@@ -231,7 +231,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
     <Modal open={open} onClose={onClose}>
       <div className="p-5 sm:p-8">
         <Header tone="red" icon={<CircleX className="size-6" />} title="Reject User" subtitle="The user will see this reason in the app" />
-        <p className="mt-[17px] text-lg text-muted">
+        <p className="mt-[17px] text-base text-muted sm:text-lg">
           Reject the application from <b className="font-semibold text-ink">{displayName(user)}</b>? Please provide a reason.
         </p>
         <TextArea
@@ -243,7 +243,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
         />
         <FieldPicker value={fields} onChange={setFields} />
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
           <Button
             variant="danger"
             size="lg"

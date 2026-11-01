@@ -57,7 +57,7 @@ function DocumentSlot({
         className="h-11 w-full rounded-control border border-field px-[18px] text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
       />
       {slot.file ? (
-        <div className="mt-[13px] flex items-center gap-[13px] rounded-control border border-dashed border-dash px-[29px] py-7">
+        <div className="mt-[13px] flex items-center gap-[13px] rounded-control border border-dashed border-dash px-4 py-5 sm:px-[29px] sm:py-7">
           <span className="grid size-[45px] place-items-center rounded-control bg-brand/10 text-brand">
             <Upload className="size-5" />
           </span>
@@ -354,16 +354,16 @@ export default function AddUserPage() {
           {formError ? <ErrorNote>{formError}</ErrorNote> : null}
 
           <div className="flex items-center gap-[14px]">
-            <Button variant="ghost" className="h-[51px] px-7" onClick={() => router.push('/users')} disabled={saving}>
+            <Button variant="ghost" className="h-[51px] px-5 sm:px-7" onClick={() => router.push('/users')} disabled={saving}>
               Cancel
             </Button>
-            <Button className="h-[51px] w-[162px] font-semibold" onClick={submit} loading={saving}>
+            <Button className="h-[51px] flex-1 font-semibold sm:w-[162px] sm:flex-none" onClick={submit} loading={saving}>
               Create User
             </Button>
           </div>
         </div>
 
-        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-[27px] text-white 2xl:sticky 2xl:top-[135px]">
+        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-5 text-white sm:p-[27px] 2xl:sticky 2xl:top-[135px]">
           <h2 className="text-lg font-bold">Instructions</h2>
           <div className="mt-6 flex flex-col gap-[22px] text-[13.5px] leading-[18px]">
             <div>

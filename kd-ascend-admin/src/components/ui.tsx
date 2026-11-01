@@ -65,7 +65,7 @@ export function Button({
   const sizes = {
     sm: 'h-[31px] rounded-control px-3.5 text-[13.5px] font-medium',
     md: 'h-10 rounded-control px-4 text-[15.8px] font-medium',
-    lg: 'h-14 rounded-card px-7 text-lg font-semibold',
+    lg: 'h-12 rounded-card px-5 text-base font-semibold sm:h-14 sm:px-7 sm:text-lg',
   };
   return (
     <button
@@ -273,7 +273,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         onMouseDown={(e) => e.stopPropagation()}
-        className={cn('relative w-full max-w-[514px] rounded-card bg-white shadow-2xl', className)}
+        className={cn('relative w-full max-w-[514px] min-w-0 rounded-card bg-white shadow-2xl', className)}
       >
         {children}
       </div>
@@ -288,7 +288,7 @@ export function ModalClose({ onClose }: { onClose: () => void }) {
       type="button"
       onClick={onClose}
       aria-label="Close"
-      className="absolute top-5 right-5 grid size-8 place-items-center rounded-full text-muted hover:bg-page"
+      className="absolute top-4 right-4 grid size-8 place-items-center rounded-full text-muted hover:bg-page sm:top-5 sm:right-5"
     >
       <X className="size-5" />
     </button>

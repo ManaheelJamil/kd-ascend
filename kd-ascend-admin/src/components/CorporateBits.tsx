@@ -451,7 +451,7 @@ export function EditSectionModal({
 
   return (
     <Modal open={!!section} onClose={onClose} className="max-w-[519px] rounded-card border border-line">
-      <form onSubmit={save} className="flex flex-col gap-[27px] p-7">
+      <form onSubmit={save} className="flex flex-col gap-[27px] p-5 sm:p-7">
         <SectionHeading tone={section === 'company' ? 'navy' : 'orange'} title={section === 'company' ? 'Company Information' : 'Contact Person Details'} />
         {section === 'company' ? (
           <CompanyFields value={form} onChange={patch} errors={errors} layout="stack" />
@@ -484,21 +484,21 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
   };
   return (
     <Modal open onClose={onClose}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="flex items-start gap-[13px]">
-          <span className="grid size-[54px] shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger sm:size-[54px]">
             <Trash2 className="size-6" />
           </span>
           <div>
-            <h2 className="text-[22.5px] leading-8 font-bold text-ink">Delete Corporate</h2>
+            <h2 className="text-[20px] leading-7 font-bold text-ink sm:text-[22.5px] sm:leading-8">Delete Corporate</h2>
             <p className="text-[13.5px] text-muted">This can’t be undone</p>
           </div>
         </div>
-        <p className="mt-[17px] text-lg text-muted">
+        <p className="mt-[17px] text-base text-muted sm:text-lg">
           Delete <b className="font-semibold text-ink">{corporate.name}</b> and its contact details? Consider setting it to Inactive instead if you may need it later.
         </p>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
           <Button variant="danger" size="lg" className="flex-1" loading={busy} onClick={run}>
             Delete Corporate
           </Button>
