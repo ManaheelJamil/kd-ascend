@@ -156,7 +156,7 @@ function UsersPageInner() {
       ) : null}
 
       <Card className="flex flex-wrap items-center gap-[13.5px] p-4 sm:p-[22.5px]">
-        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
+        <div className="relative min-w-0 basis-full sm:min-w-[220px] sm:flex-1 sm:basis-auto">
           <Search className="pointer-events-none absolute top-1/2 left-[13px] size-[18px] -translate-y-1/2 text-muted" />
           <input
             value={q}
@@ -175,8 +175,8 @@ function UsersPageInner() {
             </button>
           ) : null}
         </div>
-        <div className="relative" ref={filterRef}>
-          <Button variant="outline" onClick={() => setFilterOpen((o) => !o)} className="h-[43px]">
+        <div className="relative flex-1 sm:flex-none" ref={filterRef}>
+          <Button variant="outline" onClick={() => setFilterOpen((o) => !o)} className="h-[43px] w-full sm:w-auto">
             <Filter className="size-[18px]" />
             {status === 'all' ? 'Filter' : STATUS_LABEL[status as AccountStatus]}
           </Button>
@@ -196,7 +196,7 @@ function UsersPageInner() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" onClick={exportCsv} className="h-[43px]" title={selected.size ? 'Export selected users' : 'Export the users shown'}>
+        <Button variant="outline" onClick={exportCsv} className="h-[43px] flex-1 sm:flex-none" title={selected.size ? 'Export selected users' : 'Export the users shown'}>
           <Download className="size-[18px]" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>

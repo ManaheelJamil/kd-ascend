@@ -154,19 +154,19 @@ export default function Notifications() {
         </button>
 
         {open ? (
-          <div className="fixed inset-x-3 top-[76px] z-50 rounded-[24px] bg-white shadow-[0_8px_40px_rgba(6,7,2,0.16)] sm:absolute sm:inset-x-auto sm:top-[calc(100%+12px)] sm:right-0 sm:w-[478px] md:rounded-[30px]">
-            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3 md:px-[23px] md:pt-[27px]">
-              <h2 className="text-[20px] leading-[31px] font-semibold text-ink md:text-[22.5px]">Notifications</h2>
+          <div className="fixed inset-x-3 top-[76px] z-50 flex max-h-[calc(100dvh-92px)] flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_8px_40px_rgba(6,7,2,0.16)] sm:absolute sm:inset-x-auto sm:top-[calc(100%+12px)] sm:right-0 sm:max-h-[min(560px,calc(100dvh-140px))] sm:w-[478px] md:rounded-[30px]">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 pt-4 pb-3 sm:border-0 sm:px-5 sm:pt-5 md:px-[23px] md:pt-[27px]">
+              <h2 className="text-[18px] leading-7 font-semibold text-ink sm:text-[20px] sm:leading-[31px] md:text-[22.5px]">Notifications</h2>
               <button
                 type="button"
                 onClick={markAllRead}
                 disabled={!unread}
-                className="text-[15px] text-brand hover:underline disabled:text-muted disabled:no-underline"
+                className="shrink-0 text-[13.5px] text-brand hover:underline disabled:text-muted disabled:no-underline sm:text-[15px]"
               >
                 Mark all as read
               </button>
             </div>
-            <ul className="max-h-[min(440px,70vh)] overflow-y-auto px-5 pb-4 md:px-[23px] md:pb-[23px]">
+            <ul className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 sm:px-5 sm:pb-4 md:px-[23px] md:pb-[23px]">
               {items.length === 0 ? (
                 <li className="py-10 text-center text-[15px] text-muted">No notifications yet.</li>
               ) : (
@@ -178,18 +178,27 @@ export default function Notifications() {
                         type="button"
                         onClick={() => openItem(n)}
                         className={cn(
-                          'flex w-full items-start gap-3 rounded-[14px] px-1 py-4 text-left transition hover:bg-page md:gap-[14px]',
+                          'flex w-full items-start gap-3 rounded-[14px] px-1.5 py-3 text-left transition hover:bg-page sm:py-4 md:gap-[14px]',
                           fresh && 'bg-brand/[0.04]',
                         )}
                       >
-                        <NotifAvatar n={n} />
-                        <span className="min-w-0 flex-1 pt-1">
-                          <span className="block text-[16px] leading-6 font-medium text-ink md:text-[18px] md:leading-[26px]">{n.title}</span>
-                          <span className="mt-0.5 block truncate text-[14px] leading-5 text-muted">{n.subtitle}</span>
+                        <span className="sm:hidden">
+                          <NotifAvatar n={n} size={40} />
+                        </span>
+                        <span className="hidden sm:block">
+                          <NotifAvatar n={n} />
+                        </span>
+                        <span className="min-w-0 flex-1 sm:pt-1">
+                          <span className="block text-[14.5px] leading-5 font-medium text-ink sm:text-[16px] sm:leading-6 md:text-[18px] md:leading-[26px]">
+                            {n.title}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[13px] leading-5 text-muted sm:text-[14px]">{n.subtitle}</span>
+                          {/* Phones: time under the text so the title gets the full width */}
+                          <span className="mt-0.5 block text-[12px] text-muted sm:hidden">{notificationTime(n.at)}</span>
                         </span>
                         <span className="flex shrink-0 flex-col items-end gap-2 pt-1">
-                          <span className="text-[14px] text-muted">{notificationTime(n.at)}</span>
-                          {fresh ? <span className="size-2.5 rounded-full bg-brand" aria-label="Unread" /> : null}
+                          <span className="hidden text-[14px] text-muted sm:block">{notificationTime(n.at)}</span>
+                          {fresh ? <span className="mt-1.5 size-2.5 rounded-full bg-brand sm:mt-0" aria-label="Unread" /> : null}
                         </span>
                       </button>
                     </li>

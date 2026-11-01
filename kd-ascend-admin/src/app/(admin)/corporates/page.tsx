@@ -122,7 +122,7 @@ export default function CorporatesPage() {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <Card className="flex flex-wrap items-center gap-[14px] p-4 sm:p-[28px]">
-        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
+        <div className="relative min-w-0 basis-full sm:min-w-[220px] sm:flex-1 sm:basis-auto">
           <Search className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" />
           <input
             value={q}
@@ -131,8 +131,8 @@ export default function CorporatesPage() {
             className="h-[46px] w-full rounded-card border border-field pr-4 pl-[50px] text-base outline-none sm:h-[52px] sm:text-lg placeholder:text-[#0a0a0a]/50 focus:border-brand"
           />
         </div>
-        <div className="relative" ref={filterRef}>
-          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={() => setFilterOpen((o) => !o)}>
+        <div className="relative flex-1 sm:flex-none" ref={filterRef}>
+          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg w-full sm:w-auto" onClick={() => setFilterOpen((o) => !o)}>
             <Filter className="size-5" />
             {status === 'all' ? 'Filter' : corporateStatusLabel(status)}
           </Button>
@@ -156,7 +156,7 @@ export default function CorporatesPage() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={exportCsv}>
+        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg flex-1 sm:flex-none" onClick={exportCsv}>
           <Download className="size-5" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>
