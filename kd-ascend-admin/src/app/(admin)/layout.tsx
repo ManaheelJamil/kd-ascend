@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {menuOpen ? (
         <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
       ) : null}
-      <div className="min-h-screen lg:pl-[260px] 2xl:pl-[324px]">
+      <div data-admin-shell className="min-h-screen lg:pl-[260px] 2xl:pl-[324px]">
         <Suspense fallback={<div className="h-[68px] border-b border-line md:h-[108px]" />}>
           <Header onMenu={() => setMenuOpen(true)} />
         </Suspense>
