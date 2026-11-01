@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Bell, Menu, Search, User, X } from 'lucide-react';
+import { Menu, Search, User, X } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuth';
-import { useUsersData } from '@/context/UsersData';
 import { cn } from './ui';
+import Notifications from './Notifications';
 
 /**
  * Top search bar: searches the Pending Approvals list on the Users page (?q= in the URL).
@@ -15,7 +15,6 @@ import { cn } from './ui';
 export default function Header({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
   const { admin } = useAdminAuth();
-  const { counts } = useUsersData();
   const pathname = usePathname();
   const params = useSearchParams();
   const onUsers = pathname === '/users';
@@ -85,17 +84,7 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
       </form>
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3 md:gap-[22px]">
-        <Link
-          href="/users?status=under_review"
-          aria-label={`${counts.under_review} users waiting for approval`}
-          title={`${counts.under_review} waiting for approval`}
-          className="relative grid size-10 place-items-center rounded-card text-muted hover:bg-page md:size-[54px]"
-        >
-          <Bell className="size-[22px] md:size-[27px]" strokeWidth={1.6} />
-          {counts.under_review > 0 ? (
-            <span className="absolute top-2 right-2 size-[9px] rounded-full bg-brand ring-2 ring-white md:top-3 md:right-3 md:size-[11px]" />
-          ) : null}
-        </Link>
+        <Notifications />
 
         <div className="flex items-center gap-[18px] md:border-l md:border-field md:pl-[22.5px]">
           <div className="hidden text-right xl:block">
