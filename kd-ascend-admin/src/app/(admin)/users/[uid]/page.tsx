@@ -32,6 +32,25 @@ import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/for
 import type { UserDoc } from '@/lib/types';
 import { resubmitLabels } from '@/lib/resubmit';
 
+/** Shows only the first word ("Syed…", "trust…"); hover — or a tap on phones — shows the full text. */
+function ShortText({ text, className }: { text: string; className?: string }) {
+  const [full, setFull] = useState(false);
+  const [hover, setHover] = useState(false);
+  const first = text.trim().split(/[\s.@_+\-]/)[0] || text;
+  const shortened = first.length < text.trim().length;
+  return (
+    <span
+      title={text}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => setFull((f) => !f)}
+      className={cn('cursor-pointer break-all', className)}
+    >
+      {full || hover || !shortened ? text : `${first}…`}
+    </span>
+  );
+}
+
 function Info({
   icon: Icon,
   label,
@@ -44,24 +63,14 @@ function Info({
   /** Long emails: only the first word shows ("trust…"); hover (or a tap on phones) shows the whole address. */
   truncate?: boolean;
 }) {
-  const [full, setFull] = useState(false);
-  const [hover, setHover] = useState(false);
-  const firstWord = value ? value.split(/[.@_+\-]/)[0] || value : '';
-  const shortened = !!value && firstWord.length < value.length;
   return (
     <div className="flex min-w-0 items-start gap-[13px]">
       <Icon className="mt-0.5 size-[22px] shrink-0 text-brand" strokeWidth={1.8} />
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] text-muted">{label}</p>
         {truncate && value ? (
-          <p
-            title={value}
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            onClick={() => setFull((f) => !f)}
-            className="cursor-pointer text-[15.8px] font-medium break-all text-ink"
-          >
-            {full || hover || !shortened ? value : `${firstWord}…`}
+          <p className="text-[15.8px] font-medium text-ink">
+            <ShortText text={value} />
           </p>
         ) : (
           <p className="text-[15.8px] font-medium break-words text-ink">{value || '—'}</p>
@@ -281,7 +290,9 @@ export default function UserDetailsPage() {
               <div className="flex min-w-0 items-center gap-[17px]">
                 <Avatar letter={initial(user)} size={63} rounded="card" />
                 <div className="min-w-0">
-                  <h2 className="truncate text-[22px] font-bold sm:text-[27px] text-ink">{displayName(user)}</h2>
+                  <h2 className="text-[22px] font-bold text-ink sm:text-[27px]">
+                    <ShortText text={displayName(user)} />
+                  </h2>
                   <StatusBadge status={user.status} className="mt-1" />
                 </div>
               </div>
