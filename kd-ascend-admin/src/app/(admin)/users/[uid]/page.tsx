@@ -41,10 +41,13 @@ function Info({
   icon: React.ElementType;
   label: string;
   value?: string | null;
-  /** One line with "…" (long emails); hover shows the full value, a tap shows it on touch screens. */
+  /** Long emails: only the first word shows ("trust…"); hover (or a tap on phones) shows the whole address. */
   truncate?: boolean;
 }) {
   const [full, setFull] = useState(false);
+  const [hover, setHover] = useState(false);
+  const firstWord = value ? value.split(/[.@_+\-]/)[0] || value : '';
+  const shortened = !!value && firstWord.length < value.length;
   return (
     <div className="flex min-w-0 items-start gap-[13px]">
       <Icon className="mt-0.5 size-[22px] shrink-0 text-brand" strokeWidth={1.8} />
@@ -53,10 +56,12 @@ function Info({
         {truncate && value ? (
           <p
             title={value}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
             onClick={() => setFull((f) => !f)}
-            className={cn('cursor-default text-[15.8px] font-medium text-ink', full ? 'break-all' : 'truncate')}
+            className="cursor-pointer text-[15.8px] font-medium break-all text-ink"
           >
-            {value}
+            {full || hover || !shortened ? value : `${firstWord}…`}
           </p>
         ) : (
           <p className="text-[15.8px] font-medium break-words text-ink">{value || '—'}</p>
