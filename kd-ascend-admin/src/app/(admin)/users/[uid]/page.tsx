@@ -32,13 +32,35 @@ import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/for
 import type { UserDoc } from '@/lib/types';
 import { resubmitLabels } from '@/lib/resubmit';
 
-function Info({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
+function Info({
+  icon: Icon,
+  label,
+  value,
+  truncate,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value?: string | null;
+  /** One line with "…" (long emails); hover shows the full value, a tap shows it on touch screens. */
+  truncate?: boolean;
+}) {
+  const [full, setFull] = useState(false);
   return (
     <div className="flex min-w-0 items-start gap-[13px]">
       <Icon className="mt-0.5 size-[22px] shrink-0 text-brand" strokeWidth={1.8} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-[13.5px] text-muted">{label}</p>
-        <p className="text-[15.8px] font-medium break-words text-ink">{value || '—'}</p>
+        {truncate && value ? (
+          <p
+            title={value}
+            onClick={() => setFull((f) => !f)}
+            className={cn('cursor-default text-[15.8px] font-medium text-ink', full ? 'break-all' : 'truncate')}
+          >
+            {value}
+          </p>
+        ) : (
+          <p className="text-[15.8px] font-medium break-words text-ink">{value || '—'}</p>
+        )}
       </div>
     </div>
   );
@@ -269,7 +291,7 @@ export default function UserDetailsPage() {
             </div>
             <h3 className="mt-9 text-[20.3px] font-bold text-ink">Contact Information</h3>
             <div className="mt-[30px] grid gap-6 md:grid-cols-2">
-              <Info icon={Mail} label="Email" value={user.email} />
+              <Info icon={Mail} label="Email" value={user.email} truncate />
               <Info icon={Phone} label="Phone" value={user.phone} />
               <div className="md:col-span-2">
                 <Info icon={MapPin} label="Address" value={p?.address} />
