@@ -45,15 +45,15 @@ function StatCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="block rounded-card border border-line bg-white p-[22.5px] transition hover:border-brand/40">
+    <Link href={href} className="block rounded-card border border-line bg-white p-4 transition hover:border-brand/40 sm:p-[22.5px]">
       <div className="flex items-start justify-between gap-2">
-        <span className={cn('grid size-[45px] place-items-center rounded-control', iconClass)}>
-          <Icon className="size-[22px]" strokeWidth={1.8} />
+        <span className={cn('grid size-9 place-items-center rounded-control sm:size-[45px]', iconClass)}>
+          <Icon className="size-[18px] sm:size-[22px]" strokeWidth={1.8} />
         </span>
-        {note}
+        {note ? <span className="hidden sm:block">{note}</span> : null}
       </div>
-      <p className="mt-[18px] text-[13.5px] font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className="mt-1 text-[27px] leading-9 font-bold text-ink">{value.toLocaleString()}</p>
+      <p className="mt-3 text-[13px] leading-[18px] font-medium text-muted sm:mt-[18px] sm:text-[13.5px] sm:tracking-wide sm:uppercase">{label}</p>
+      <p className="mt-1 text-[24px] leading-8 font-bold text-ink sm:text-[27px] sm:leading-9">{value.toLocaleString()}</p>
     </Link>
   );
 }
@@ -102,7 +102,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-[27px]">
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="grid gap-[22.5px] sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-[22.5px] xl:grid-cols-4">
         <StatCard
           icon={Users}
           iconClass="bg-brand/10 text-brand"
