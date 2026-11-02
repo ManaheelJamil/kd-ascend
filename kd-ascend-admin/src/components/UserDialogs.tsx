@@ -108,7 +108,7 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
           <Button
             variant="danger"
             size="lg"
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             loading={busy}
             disabled={!reason.trim()}
             onClick={() => run(() => blacklistUser(user.uid, reason, fields))}
@@ -160,7 +160,7 @@ export function DeleteUserDialog({ user, open, onClose, onDone }: DialogProps) {
           <Button
             variant="danger"
             size="lg"
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             loading={busy}
             disabled={!ok}
             onClick={() => run(() => deleteUser(user.uid))}
@@ -202,7 +202,7 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
         )}
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-          <Button variant="success" size="lg" className="flex-1" loading={busy} onClick={() => run(() => removeFromBlacklist(user.uid))}>
+          <Button variant="success" size="lg" className="w-full sm:w-auto sm:flex-1" loading={busy} onClick={() => run(() => removeFromBlacklist(user.uid))}>
             Remove from Blacklist
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">
@@ -248,7 +248,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
           <Button
             variant="danger"
             size="lg"
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             loading={busy}
             disabled={!reason.trim()}
             onClick={() => run(() => rejectUser(user.uid, reason, fields))}

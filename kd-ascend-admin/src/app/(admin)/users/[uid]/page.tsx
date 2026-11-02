@@ -217,16 +217,16 @@ export default function UserDetailsPage() {
         </div>
         <div className="flex w-full flex-wrap gap-3 sm:w-auto">
           {user.status === 'blacklisted' ? (
-            <Button variant="success" className="h-[51px] flex-1 px-6 font-semibold sm:flex-none" onClick={() => setDialog('unblacklist')}>
+            <Button variant="success" className="h-12 flex-1 px-6 font-semibold sm:h-[51px] sm:flex-none" onClick={() => setDialog('unblacklist')}>
               <ShieldCheck className="size-5" />
               Remove from Blacklist
             </Button>
           ) : user.status === 'approved' || (user.status === 'under_review' && user.resubmittedFrom === 'blacklisted') ? (
-            <Button variant="danger" size="lg" className="flex-1 sm:flex-none" onClick={() => setDialog('blacklist')}>
+            <Button variant="danger" className="h-12 flex-1 px-6 text-base font-semibold sm:h-[51px] sm:flex-none sm:text-lg" onClick={() => setDialog('blacklist')}>
               Blacklist User
             </Button>
           ) : null}
-          <Button variant="outline" className="h-[51px] flex-1 border-danger px-6 font-semibold text-danger sm:flex-none" onClick={() => setDialog('delete')}>
+          <Button variant="outline" className="h-12 flex-1 border-danger px-6 font-semibold text-danger sm:h-[51px] sm:flex-none" onClick={() => setDialog('delete')}>
             <Trash2 className="size-5" />
             Delete User
           </Button>

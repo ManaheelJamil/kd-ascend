@@ -83,7 +83,7 @@ export default function UsersTable({
         href={`/users/${u.uid}`}
         aria-label="View / edit"
         title="View / edit"
-        className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
+        className="grid size-9 place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink sm:size-[31px]"
       >
         <SquarePen className="size-[18px]" />
       </Link>

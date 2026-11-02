@@ -308,13 +308,13 @@ export function ContactFields({
 
 /** Figma: Cancel (outlined) + Save Changes (orange, shadow), equal halves. */
 export function SaveCancel({ onCancel, busy, height = 47 }: { onCancel: () => void; busy?: boolean; height?: 47 | 56 }) {
-  const h = height === 56 ? 'h-14' : 'h-[47px]';
+  const h = height === 56 ? 'h-12 sm:h-14' : 'h-12 sm:h-[47px]';
   return (
-    <div className={cn('grid grid-cols-2', height === 56 ? 'gap-[18px]' : 'gap-[19px]')}>
-      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-lg font-medium')}>
+    <div className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2', height === 56 ? 'sm:gap-[18px]' : 'sm:gap-[19px]')}>
+      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-base font-medium sm:text-lg')}>
         Cancel
       </Button>
-      <Button type="submit" loading={busy} className={cn(h, 'rounded-card text-lg font-medium')}>
+      <Button type="submit" loading={busy} className={cn(h, 'order-first rounded-card text-base font-medium sm:order-none sm:text-lg')}>
         Save Changes
       </Button>
     </div>
@@ -499,7 +499,7 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
         </p>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-          <Button variant="danger" size="lg" className="flex-1" loading={busy} onClick={run}>
+          <Button variant="danger" size="lg" className="w-full sm:w-auto sm:flex-1" loading={busy} onClick={run}>
             Delete Corporate
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">

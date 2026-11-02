@@ -191,7 +191,7 @@ export default function CorporatesPage() {
                       <Link
                         href={`/corporates/${c.id}/edit`}
                         aria-label="Edit"
-                        className="grid size-[31px] place-items-center rounded-control text-muted hover:bg-page hover:text-ink"
+                        className="grid size-9 place-items-center rounded-control text-muted hover:bg-page hover:text-ink sm:size-[31px]"
                       >
                         <SquarePen className="size-[18px]" />
                       </Link>

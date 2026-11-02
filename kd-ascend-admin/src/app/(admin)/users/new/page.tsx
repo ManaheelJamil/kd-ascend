@@ -354,10 +354,10 @@ export default function AddUserPage() {
           {formError ? <ErrorNote>{formError}</ErrorNote> : null}
 
           <div className="flex items-center gap-[14px]">
-            <Button variant="ghost" className="h-[51px] px-5 sm:px-7" onClick={() => router.push('/users')} disabled={saving}>
+            <Button variant="ghost" className="h-12 px-5 sm:h-[51px] sm:px-7" onClick={() => router.push('/users')} disabled={saving}>
               Cancel
             </Button>
-            <Button className="h-[51px] flex-1 font-semibold sm:w-[162px] sm:flex-none" onClick={submit} loading={saving}>
+            <Button className="h-12 flex-1 font-semibold sm:h-[51px] sm:w-[162px] sm:flex-none" onClick={submit} loading={saving}>
               Create User
             </Button>
           </div>
@@ -402,11 +402,11 @@ export default function AddUserPage() {
             <div>Password: {created?.password}</div>
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button variant="outline" size="lg" onClick={copyDetails} className="flex-1">
+            <Button variant="outline" size="lg" onClick={copyDetails} className="w-full sm:w-auto sm:flex-1">
               {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
               {copied ? 'Copied' : 'Copy details'}
             </Button>
-            <Button size="lg" className="flex-1" onClick={() => router.push(`/users/${created?.uid}`)}>
+            <Button size="lg" className="w-full sm:w-auto sm:flex-1" onClick={() => router.push(`/users/${created?.uid}`)}>
               View user
             </Button>
           </div>

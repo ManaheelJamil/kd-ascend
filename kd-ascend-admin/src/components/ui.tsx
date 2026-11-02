@@ -96,7 +96,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       {...rest}
-      className={cn('grid size-[31px] place-items-center rounded-control transition hover:bg-page', className)}
+      className={cn('grid size-9 place-items-center rounded-control transition hover:bg-page sm:size-[31px]', className)}
     >
       {children}
     </button>
