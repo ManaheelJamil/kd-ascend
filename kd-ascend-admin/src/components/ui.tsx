@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { AccountStatus } from '@/lib/types';
@@ -65,7 +65,7 @@ export function Button({
   const sizes = {
     sm: 'h-[31px] rounded-control px-3.5 text-[13.5px] font-medium',
     md: 'h-10 rounded-control px-4 text-[15.8px] font-medium',
-    lg: 'h-14 rounded-card px-7 text-lg font-semibold',
+    lg: 'h-12 rounded-card px-5 text-base font-semibold sm:h-14 sm:px-7 sm:text-lg',
   };
   return (
     <button
@@ -96,7 +96,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       {...rest}
-      className={cn('grid size-[31px] place-items-center rounded-control transition hover:bg-page', className)}
+      className={cn('grid size-9 place-items-center rounded-control transition hover:bg-page sm:size-[31px]', className)}
     >
       {children}
     </button>
@@ -273,7 +273,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         onMouseDown={(e) => e.stopPropagation()}
-        className={cn('relative w-full max-w-[514px] rounded-card bg-white shadow-2xl', className)}
+        className={cn('relative w-full max-w-[514px] min-w-0 rounded-card bg-white shadow-2xl', className)}
       >
         {children}
       </div>
@@ -288,9 +288,38 @@ export function ModalClose({ onClose }: { onClose: () => void }) {
       type="button"
       onClick={onClose}
       aria-label="Close"
-      className="absolute top-5 right-5 grid size-8 place-items-center rounded-full text-muted hover:bg-page"
+      className="absolute top-4 right-4 grid size-8 place-items-center rounded-full text-muted hover:bg-page sm:top-5 sm:right-5"
     >
       <X className="size-5" />
     </button>
   );
 }
+
+/* ---------- Text ---------- */
+
+/**
+ * Long text (names, emails, file names): shown in full on tablets and computers.
+ * On phones only the first word shows ("trust…"); a tap shows the whole text, and a mouse hover too.
+ */
+export function ShortText({ text, className }: { text: string; className?: string }) {
+  const [full, setFull] = useState(false);
+  const [hover, setHover] = useState(false);
+  const first = text.trim().split(/[\s.@_+\-]/)[0] || text;
+  const shortened = first.length < text.trim().length;
+  return (
+    <span title={text} className={cn('break-all', className)}>
+      {/* Tablets and computers: always the full text */}
+      <span className="hidden md:inline">{text}</span>
+      {/* Phones: first word only until tapped */}
+      <span
+        className="cursor-pointer md:hidden"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={() => setFull((f) => !f)}
+      >
+        {full || hover || !shortened ? text : `${first}…`}
+      </span>
+    </span>
+  );
+}
+
