@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Copy, Plus, RefreshCw, Upload, User, X } from 'lucide-react';
-import { Button, Card, DateInput, ErrorNote, Field, Modal, Select, TextArea, TextInput, cn } from '@/components/ui';
+import { Button, Card, DateInput, ErrorNote, Field, Modal, ModalClose, Select, TextArea, TextInput, cn } from '@/components/ui';
 import { createUser } from '@/lib/users';
 import { fileSize, generatePassword, isEmail, isNric, toE164 } from '@/lib/format';
 import { COUNTRIES, GENDERS, SINGAPORE_BANKS } from '@/lib/options';
@@ -388,18 +388,20 @@ export default function AddUserPage() {
         </aside>
       </div>
 
-      <Modal open={!!created} onClose={() => router.push(`/users/${created?.uid}`)}>
-        <div className="p-8">
+      <Modal open={!!created} onClose={() => router.push('/users')}>
+        {/* ✕ closes the popup and returns to the Users list. */}
+        <ModalClose onClose={() => router.push('/users')} />
+        <div className="p-5 sm:p-8">
           <span className="grid size-[54px] place-items-center rounded-full bg-[#dcfce7] text-success">
             <Check className="size-7" />
           </span>
           <h2 className="mt-4 text-[22.5px] font-bold">User created</h2>
           <p className="mt-1 text-[15px] text-muted">Share these login details with the user. The password is not shown again.</p>
-          <div className="mt-5 rounded-control bg-tile p-4 font-mono text-[14.5px] leading-7">
+          <div className="mt-5 rounded-control bg-tile p-4 font-mono text-[13.5px] leading-7 break-all sm:text-[14.5px]">
             <div>Email: {created?.email}</div>
             <div>Password: {created?.password}</div>
           </div>
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button variant="outline" size="lg" onClick={copyDetails} className="flex-1">
               {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
               {copied ? 'Copied' : 'Copy details'}
