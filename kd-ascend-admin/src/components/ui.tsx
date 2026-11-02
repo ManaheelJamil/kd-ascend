@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { AccountStatus } from '@/lib/types';
@@ -294,3 +294,25 @@ export function ModalClose({ onClose }: { onClose: () => void }) {
     </button>
   );
 }
+
+/* ---------- Text ---------- */
+
+/** Shows only the first word ("Syed…", "trust…"); hover — or a tap on phones — shows the full text. */
+export function ShortText({ text, className }: { text: string; className?: string }) {
+  const [full, setFull] = useState(false);
+  const [hover, setHover] = useState(false);
+  const first = text.trim().split(/[\s.@_+\-]/)[0] || text;
+  const shortened = first.length < text.trim().length;
+  return (
+    <span
+      title={text}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => setFull((f) => !f)}
+      className={cn('cursor-pointer break-all', className)}
+    >
+      {full || hover || !shortened ? text : `${first}…`}
+    </span>
+  );
+}
+

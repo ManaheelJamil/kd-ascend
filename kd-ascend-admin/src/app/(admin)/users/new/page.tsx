@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Copy, Plus, RefreshCw, Upload, User, X } from 'lucide-react';
-import { Button, Card, DateInput, ErrorNote, Field, Modal, ModalClose, Select, TextArea, TextInput, cn } from '@/components/ui';
+import { Button, Card, DateInput, ErrorNote, Field, Modal, ModalClose, Select, ShortText, TextArea, TextInput, cn } from '@/components/ui';
 import { createUser } from '@/lib/users';
 import { fileSize, generatePassword, isEmail, isNric, toE164 } from '@/lib/format';
 import { COUNTRIES, GENDERS, SINGAPORE_BANKS } from '@/lib/options';
@@ -58,14 +58,16 @@ function DocumentSlot({
       />
       {slot.file ? (
         <div className="mt-[13px] flex items-center gap-[13px] rounded-control border border-dashed border-dash px-4 py-5 sm:px-[29px] sm:py-7">
-          <span className="grid size-[45px] place-items-center rounded-control bg-brand/10 text-brand">
+          <span className="grid size-[45px] shrink-0 place-items-center rounded-control bg-brand/10 text-brand">
             <Upload className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15.8px] font-medium text-ink">{slot.file.name}</p>
+            <p className="text-[15.8px] font-medium text-ink">
+              <ShortText text={slot.file.name} />
+            </p>
             <p className="text-[13.5px] text-muted">{fileSize(slot.file.size)}</p>
           </div>
-          <button type="button" onClick={() => onChange({ ...slot, file: null })} aria-label="Remove file" className="text-ink hover:text-danger">
+          <button type="button" onClick={() => onChange({ ...slot, file: null })} aria-label="Remove file" className="shrink-0 text-ink hover:text-danger">
             <X className="size-5" />
           </button>
         </div>
@@ -216,7 +218,7 @@ export default function AddUserPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 md:gap-[40px]">
+    <div className="flex min-w-0 flex-col gap-6 md:gap-[40px]">
       <div className="flex items-start gap-[18px]">
         <Link href="/users" aria-label="Back" className="mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-white sm:size-[54px] text-ink hover:bg-line">
           <ArrowLeft className="size-[22px]" />
@@ -228,7 +230,7 @@ export default function AddUserPage() {
       </div>
 
       <div className="grid gap-[27px] 2xl:grid-cols-[minmax(0,700px)_336px]">
-        <div className="flex flex-col gap-[27px]">
+        <div className="flex min-w-0 flex-col gap-[27px]">
           <Card className="flex items-center gap-[18px] p-5 sm:p-[28px]">
             <span className="grid size-[54px] shrink-0 place-items-center rounded-card bg-linear-to-r from-brand to-brand-light text-white">
               <User className="size-[27px]" strokeWidth={1.8} />

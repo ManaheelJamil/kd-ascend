@@ -23,7 +23,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { Avatar, Button, Card, ErrorNote, FullPageSpinner, StatusBadge, cn } from '@/components/ui';
+import { Avatar, Button, Card, ErrorNote, FullPageSpinner, ShortText, StatusBadge, cn } from '@/components/ui';
 import { BlacklistDialog, DeleteUserDialog, RejectDialog, RemoveBlacklistDialog } from '@/components/UserDialogs';
 import DocumentReviewModal from '@/components/DocumentReviewModal';
 import { EditContactModal, EditPersonalModal } from '@/components/EditUserModals';
@@ -31,25 +31,6 @@ import { approveUser, listDocuments, subscribeUser, type UserDocument } from '@/
 import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 import { resubmitLabels } from '@/lib/resubmit';
-
-/** Shows only the first word ("Syed…", "trust…"); hover — or a tap on phones — shows the full text. */
-function ShortText({ text, className }: { text: string; className?: string }) {
-  const [full, setFull] = useState(false);
-  const [hover, setHover] = useState(false);
-  const first = text.trim().split(/[\s.@_+\-]/)[0] || text;
-  const shortened = first.length < text.trim().length;
-  return (
-    <span
-      title={text}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={() => setFull((f) => !f)}
-      className={cn('cursor-pointer break-all', className)}
-    >
-      {full || hover || !shortened ? text : `${first}…`}
-    </span>
-  );
-}
 
 function Info({
   icon: Icon,
@@ -198,7 +179,7 @@ export default function UserDetailsPage() {
   const canDecide = user.status === 'under_review' || user.status === 'incomplete' || user.status === 'rejected';
 
   return (
-    <div className="flex flex-col gap-6 md:gap-[40px]">
+    <div className="flex min-w-0 flex-col gap-6 md:gap-[40px]">
       {/* Title row */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-[18px]">
@@ -284,7 +265,7 @@ export default function UserDetailsPage() {
 
       <div className="grid gap-6 md:gap-[36px] xl:grid-cols-[minmax(0,1fr)_322px]">
         {/* Left column */}
-        <div className="flex flex-col gap-6 md:gap-[36px]">
+        <div className="flex min-w-0 flex-col gap-6 md:gap-[36px]">
           <Card className="p-5 sm:p-[37px]">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-[17px]">
