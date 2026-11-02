@@ -7,7 +7,7 @@ import { Check, Download, Filter, Search, UserPlus, X } from 'lucide-react';
 import { Avatar, Button, Card, ErrorNote, FullPageSpinner, PageTitle, cn } from '@/components/ui';
 import UsersTable from '@/components/UsersTable';
 import { useUsersData } from '@/context/UsersData';
-import { STATUS_LABEL, displayName, initial, isoDay } from '@/lib/format';
+import { STATUS_LABEL, displayName, initial, isoDay, userCode } from '@/lib/format';
 import type { AccountStatus, StatusFilter, UserDoc } from '@/lib/types';
 import { userMatches } from '@/lib/search';
 
@@ -17,10 +17,11 @@ const FILTERS: StatusFilter[] = ['all', 'under_review', 'approved', 'rejected', 
 const matches = (u: UserDoc, q: string) => userMatches(u, q);
 
 function toCsv(users: UserDoc[]) {
-  const head = ['Name', 'Email', 'Phone', 'Status', 'NRIC', 'Gender', 'Nationality', 'Date of Birth', 'Address', 'Joined'];
+  const head = ['User ID', 'Name', 'Email', 'Phone', 'Status', 'NRIC', 'Gender', 'Nationality', 'Date of Birth', 'Address', 'Joined'];
   const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
   const rows = users.map((u) =>
     [
+      u.userNo ? userCode(u) : '',
       displayName(u),
       u.email,
       u.phone,

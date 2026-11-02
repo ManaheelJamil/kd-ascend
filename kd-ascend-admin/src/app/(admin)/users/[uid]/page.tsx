@@ -28,7 +28,7 @@ import { BlacklistDialog, DeleteUserDialog, RejectDialog, RemoveBlacklistDialog 
 import DocumentReviewModal from '@/components/DocumentReviewModal';
 import { EditContactModal, EditPersonalModal } from '@/components/EditUserModals';
 import { approveUser, listDocuments, subscribeUser, type UserDocument } from '@/lib/users';
-import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/format';
+import { displayName, dob, initial, longDay, shortDay, userCode } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 import { resubmitLabels } from '@/lib/resubmit';
 
@@ -192,7 +192,7 @@ export default function UserDetailsPage() {
             <ArrowLeft className="size-[22px]" />
           </button>
           <div>
-            <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">User ID : {shortId(user.uid)}</h1>
+            <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">User ID : {userCode(user)}</h1>
             <p className="mt-1 text-lg text-muted">Joined on {longDay(user.createdAt)}</p>
           </div>
         </div>
@@ -408,7 +408,7 @@ export default function UserDetailsPage() {
             <dl className="mt-6 flex flex-col gap-[14px] text-[15.8px]">
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted">User ID</dt>
-                <dd className="font-medium text-ink">#{shortId(user.uid)}</dd>
+                <dd className="font-medium text-ink">{userCode(user)}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted">Joined</dt>

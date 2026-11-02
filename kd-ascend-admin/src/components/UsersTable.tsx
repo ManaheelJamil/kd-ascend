@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Ban, ChevronDown, ShieldCheck, SquarePen, Trash2 } from 'lucide-react';
 import { Avatar, IconButton, StatusBadge, cn } from './ui';
 import { BlacklistDialog, DeleteUserDialog, RemoveBlacklistDialog } from './UserDialogs';
-import { displayName, initial, isoDay, toDate } from '@/lib/format';
+import { displayName, initial, isoDay, toDate, userCode } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 
 type SortKey = 'name' | 'email' | 'phone' | 'status' | 'joined';
@@ -128,7 +128,9 @@ export default function UsersTable({
               <Avatar letter={initial(u)} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-[15px] font-semibold text-ink">{displayName(u)}</p>
+                  <p className="truncate text-[15px] font-semibold text-ink">
+                    {displayName(u)} <span className="text-[12.5px] font-normal text-muted">· {userCode(u)}</span>
+                  </p>
                   <StatusBadge status={u.status} />
                 </div>
                 <p className="truncate text-[13px] text-muted">{u.email}</p>
@@ -207,7 +209,10 @@ export default function UsersTable({
                     ) : null}
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar letter={initial(u)} />
-                      <span className="truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
+                        <span className="block text-[12.5px] text-muted">{userCode(u)}</span>
+                      </span>
                     </div>
                   </td>
                   <td className="truncate px-1.5 text-[13.5px] text-muted" title={u.email}>
