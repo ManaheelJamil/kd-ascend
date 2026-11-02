@@ -119,6 +119,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Counter behind the sequential user IDs (KD01U, KD02U …), managed by the admin dashboard.
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
     // One-time codes and reset tokens: Cloud Functions only.
     match /otp/{id} {
       allow read, write: if false;
