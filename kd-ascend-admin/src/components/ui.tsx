@@ -297,21 +297,28 @@ export function ModalClose({ onClose }: { onClose: () => void }) {
 
 /* ---------- Text ---------- */
 
-/** Shows only the first word ("Syed…", "trust…"); hover — or a tap on phones — shows the full text. */
+/**
+ * Long text (names, emails, file names): shown in full on tablets and computers.
+ * On phones only the first word shows ("trust…"); a tap shows the whole text, and a mouse hover too.
+ */
 export function ShortText({ text, className }: { text: string; className?: string }) {
   const [full, setFull] = useState(false);
   const [hover, setHover] = useState(false);
   const first = text.trim().split(/[\s.@_+\-]/)[0] || text;
   const shortened = first.length < text.trim().length;
   return (
-    <span
-      title={text}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={() => setFull((f) => !f)}
-      className={cn('cursor-pointer break-all', className)}
-    >
-      {full || hover || !shortened ? text : `${first}…`}
+    <span title={text} className={cn('break-all', className)}>
+      {/* Tablets and computers: always the full text */}
+      <span className="hidden md:inline">{text}</span>
+      {/* Phones: first word only until tapped */}
+      <span
+        className="cursor-pointer md:hidden"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={() => setFull((f) => !f)}
+      >
+        {full || hover || !shortened ? text : `${first}…`}
+      </span>
     </span>
   );
 }
