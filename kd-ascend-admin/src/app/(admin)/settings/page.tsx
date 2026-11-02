@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, verifyBeforeUpdateEmail } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { CircleCheck, Eye, EyeOff, Pencil, User } from 'lucide-react';
 import { Button, Card, cn } from '@/components/ui';
@@ -10,9 +10,7 @@ import { authErrorMessage, useAdminAuth } from '@/context/AdminAuth';
 import { auth, db } from '@/lib/firebase';
 import { imageFileToDataUrl } from '@/lib/settings';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-type Errors = Partial<Record<'name' | 'email' | 'oldPassword' | 'newPassword' | 'confirmPassword', string>>;
+type Errors = Partial<Record<'name' | 'oldPassword' | 'newPassword' | 'confirmPassword', string>>;
 
 function PasswordInput({
   value,
@@ -103,19 +101,12 @@ export default function SettingsPage() {
     }
   };
 
-  const currentEmail = (user?.email ?? '').toLowerCase();
-  const emailChanged = email.trim().toLowerCase() !== currentEmail;
   const passwordChanging = !!(newPassword || confirmPassword);
 
   const validate = (): Errors => {
     const errs: Errors = {};
     if (!name.trim()) errs.name = 'Name is required';
-    if (!email.trim()) errs.email = 'Email is required';
-    else if (!EMAIL_RE.test(email.trim())) errs.email = 'Enter a valid email address';
-    if ((emailChanged || passwordChanging) && !oldPassword)
-      errs.oldPassword = emailChanged && !passwordChanging
-        ? 'Enter your current password to change your email'
-        : 'Enter your current password';
+    if (passwordChanging && !oldPassword) errs.oldPassword = 'Enter your current password';
     if (passwordChanging) {
       if (newPassword.length < 8) errs.newPassword = 'Use at least 8 characters';
       else if (newPassword === oldPassword) errs.newPassword = 'New password must be different';
@@ -142,7 +133,7 @@ export default function SettingsPage() {
         done.push('Admin name updated.');
       }
 
-      if (emailChanged || passwordChanging) {
+      if (passwordChanging) {
         try {
           await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', oldPassword));
         } catch (err) {
@@ -154,18 +145,8 @@ export default function SettingsPage() {
           throw err;
         }
 
-        if (passwordChanging) {
-          await updatePassword(user, newPassword);
-          done.push('Password changed.');
-        }
-        if (emailChanged) {
-          const next = email.trim().toLowerCase();
-          await verifyBeforeUpdateEmail(user, next);
-          await updateDoc(doc(db, 'admins', user.uid), { pendingEmail: next, updatedAt: serverTimestamp() });
-          done.push(
-            `We sent a confirmation link to ${next}. Your login email changes once you open that link; until then keep using ${user.email}.`,
-          );
-        }
+        await updatePassword(user, newPassword);
+        done.push('Password changed.');
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -249,17 +230,16 @@ export default function SettingsPage() {
               className="font-normal"
             />
           </CorpField>
-          <CorpField label="Email" required error={errors.email}>
+          {/* The login email can't be changed from the website. */}
+          <CorpField label="Email">
             <CorpInput
               type="email"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                clear('email');
-              }}
-              placeholder="name@company.com"
-              autoComplete="email"
-              invalid={!!errors.email}
+              readOnly
+              disabled
+              aria-readonly="true"
+              title="The admin email can't be changed here"
+              className="cursor-not-allowed bg-page text-muted"
             />
           </CorpField>
         </div>

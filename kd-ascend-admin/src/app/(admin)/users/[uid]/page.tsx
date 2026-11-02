@@ -54,7 +54,7 @@ function Info({
             <ShortText text={value} />
           </p>
         ) : (
-          <p className="text-[15.8px] font-medium break-words text-ink">{value || '—'}</p>
+          <p className="text-[15.8px] font-medium text-ink [overflow-wrap:anywhere]">{value || '—'}</p>
         )}
       </div>
     </div>
@@ -288,7 +288,7 @@ export default function UserDetailsPage() {
             </div>
             <h3 className="mt-9 text-[20.3px] font-bold text-ink">Contact Information</h3>
             <div className="mt-[30px] grid gap-6 md:grid-cols-2">
-              <Info icon={Mail} label="Email" value={user.email} truncate />
+              <Info icon={Mail} label="Email" value={user.email} />
               <Info icon={Phone} label="Phone" value={user.phone} />
               <div className="md:col-span-2">
                 <Info icon={MapPin} label="Address" value={p?.address} />
