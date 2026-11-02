@@ -332,15 +332,17 @@ export default function UserDetailsPage() {
               <div className="flex flex-col gap-[18px]">
                 {documents.map((d) => (
                   <div key={JSON.stringify(d.ref)} className="flex min-h-[63px] flex-wrap items-center gap-x-4 gap-y-2 rounded-card bg-tile px-[18px] py-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-[13px]">
+                    <div className="flex min-w-[180px] flex-1 items-center gap-[13px]">
                       {d.ref.kind === 'statement' ? (
                         <FileText className="size-[22px] shrink-0 text-ink" strokeWidth={1.6} />
                       ) : (
                         <IdCard className="size-[22px] shrink-0 text-ink" strokeWidth={1.6} />
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-lg font-medium text-ink">{d.label}</p>
-                        <p className="truncate text-[13px] text-muted">{d.file.name}</p>
+                        <p className="truncate text-base font-medium text-ink sm:text-lg">{d.label}</p>
+                        <p className="text-[13px] text-muted">
+                          <ShortText text={d.file.name} />
+                        </p>
                       </div>
                     </div>
                     <DocStatus status={d.file.status} />
