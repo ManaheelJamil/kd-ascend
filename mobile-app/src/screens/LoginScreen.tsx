@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Text from '../components/AppText';
 import AuthLayout from '../components/AuthLayout';
@@ -9,7 +9,7 @@ import Button from '../components/Button';
 import { FlippedY } from '../components/Icons';
 import { Svg } from '../assets';
 import { colors, fonts, text } from '../theme';
-import { login } from '../services/authService';
+import { getRememberedEmail, login } from '../services/authService';
 import { errorCode, friendlyError } from '../services/errors';
 import { validateEmail } from '../utils/validation';
 import type { ScreenProps } from '../navigation/types';
@@ -21,6 +21,19 @@ export default function LoginScreen({ navigation }: ScreenProps<'Login'>) {
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null; form?: string | null }>({});
   const [loading, setLoading] = useState(false);
   const passwordRef = useRef<TextInput>(null);
+
+  // "Remember me" from the last sign-in: email filled in and the box ticked.
+  useEffect(() => {
+    let active = true;
+    getRememberedEmail().then((saved) => {
+      if (!active || !saved) return;
+      setEmail((current) => current || saved);
+      setRemember(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const onLogin = async () => {
     const next = {

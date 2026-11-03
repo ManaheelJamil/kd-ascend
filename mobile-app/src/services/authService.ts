@@ -12,14 +12,35 @@ import { createUserDoc } from './userService';
 import { errorCode, isFunctionMissing } from './errors';
 
 const REMEMBER_KEY = 'auth.rememberMe';
+const REMEMBERED_EMAIL_KEY = 'auth.rememberedEmail';
 
-/** "Remember me": when off, the session is cleared the next time the app cold-starts. */
+/**
+ * "Remember me"
+ *  - ticked: the user stays signed in when the app is closed and reopened, and after logging out
+ *    the Sign in screen opens with their email filled in and the box ticked.
+ *  - not ticked: the session ends the next time the app is opened, and the email is forgotten.
+ * The password is never stored on the phone.
+ */
 export const setRememberMe = (remember: boolean) => AsyncStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
 export const getRememberMe = async () => (await AsyncStorage.getItem(REMEMBER_KEY)) !== '0';
 
+/** Email saved by "Remember me" (null when the box was not ticked last time). */
+export async function getRememberedEmail(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(REMEMBERED_EMAIL_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export async function login(email: string, password: string, remember: boolean) {
+  const cleanEmail = email.trim().toLowerCase();
+  const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+  // Saved only after a successful sign-in.
   await setRememberMe(remember);
-  return signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+  if (remember) await AsyncStorage.setItem(REMEMBERED_EMAIL_KEY, cleanEmail);
+  else await AsyncStorage.removeItem(REMEMBERED_EMAIL_KEY);
+  return cred;
 }
 
 /**
