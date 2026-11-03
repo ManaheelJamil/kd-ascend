@@ -102,7 +102,7 @@ export default TextField;
 const styles = StyleSheet.create({
   wrap: { gap: 12, width: '100%' },
   box: {
-    minHeight: 48,
+    height: 48,
     borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.stroke,
@@ -117,8 +117,7 @@ const styles = StyleSheet.create({
   input: {
     ...text.input,
     flex: 1,
-    alignSelf: 'stretch',
-    minHeight: 46,
+    height: '100%',
     paddingVertical: 0,
     includeFontPadding: false,
   },

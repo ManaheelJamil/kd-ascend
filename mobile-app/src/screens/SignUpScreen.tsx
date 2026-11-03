@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    height: '100%',
+    flex: 1, // fills the field's fixed 48pt height, so the divider line runs top to bottom
     paddingRight: 10,
     borderRightWidth: 1,
     borderRightColor: colors.stroke,
