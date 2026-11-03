@@ -53,6 +53,8 @@ export type UserDoc = {
   status: AccountStatus;
   profile?: PersonalInfo;
   identityDocument?: StoredFile | null;
+  /** From the app: Student Pass and / or Identity Card (IC), front and back. */
+  identityDocuments?: Partial<Record<'studentPass' | 'ic', { front: StoredFile; back: StoredFile }>>;
   /** Extra documents added by an admin. */
   documents?: StoredFile[];
   payout?: Payout;

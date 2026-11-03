@@ -162,6 +162,18 @@ export const updatePayout = (uid: string, payout: Payout) =>
 
 /** Marks one of the user's documents as verified / rejected. */
 export async function setDocumentStatus(user: UserDoc, which: DocumentRef, status: 'verified' | 'rejected') {
+  if (which.kind === 'idDoc') {
+    const file = user.identityDocuments?.[which.doc]?.[which.side];
+    if (!file) return;
+    const updated = { ...file, status, reviewedAt: serverTimestamp() };
+    const legacy = user.identityDocument;
+    return updateDoc(userRef(user.uid), {
+      [`identityDocuments.${which.doc}.${which.side}`]: updated,
+      // Keep the old single-document copy in step when it is the same file.
+      ...(legacy && legacy.path === file.path ? { identityDocument: { ...legacy, status, reviewedAt: serverTimestamp() } } : {}),
+      updatedAt: serverTimestamp(),
+    });
+  }
   if (which.kind === 'identity' && user.identityDocument) {
     return updateDoc(userRef(user.uid), {
       identityDocument: { ...user.identityDocument, status, reviewedAt: serverTimestamp() },
@@ -180,14 +192,30 @@ export async function setDocumentStatus(user: UserDoc, which: DocumentRef, statu
   }
 }
 
-export type DocumentRef = { kind: 'identity' } | { kind: 'statement' } | { kind: 'extra'; index: number };
+export type DocumentRef =
+  | { kind: 'identity' }
+  | { kind: 'idDoc'; doc: 'studentPass' | 'ic'; side: 'front' | 'back' }
+  | { kind: 'statement' }
+  | { kind: 'extra'; index: number };
 
 export type UserDocument = { ref: DocumentRef; label: string; file: StoredFile };
 
 /** Every document the user has, in display order. */
 export function listDocuments(user: UserDoc): UserDocument[] {
   const out: UserDocument[] = [];
-  if (user.identityDocument) {
+  const idDocs = user.identityDocuments;
+  if (idDocs && (idDocs.studentPass || idDocs.ic)) {
+    // Front and back of each document the user uploaded in the app.
+    const names = { studentPass: 'Student Pass', ic: 'Identity Card (IC)' } as const;
+    (['studentPass', 'ic'] as const).forEach((doc) =>
+      (['front', 'back'] as const).forEach((side) => {
+        const file = idDocs[doc]?.[side];
+        if (file) {
+          out.push({ ref: { kind: 'idDoc', doc, side }, label: `${names[doc]} — ${side === 'front' ? 'Front' : 'Back'}`, file });
+        }
+      }),
+    );
+  } else if (user.identityDocument) {
     out.push({ ref: { kind: 'identity' }, label: user.identityDocument.label || 'Identity Document', file: user.identityDocument });
   }
   (user.documents ?? []).forEach((file, index) =>
