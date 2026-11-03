@@ -2,13 +2,13 @@ import React, { forwardRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import Text, { MAX_FONT_SCALE } from './AppText';
 import { Svg } from '../assets';
 import { colors, layout, text } from '../theme';
 
@@ -60,6 +60,7 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
             value={value}
             placeholder={placeholder}
             placeholderTextColor={colors.grey}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
             secureTextEntry={password ? hidden : inputProps.secureTextEntry}
             autoCapitalize={password ? 'none' : inputProps.autoCapitalize}
             autoCorrect={password ? false : inputProps.autoCorrect}
@@ -101,7 +102,7 @@ export default TextField;
 const styles = StyleSheet.create({
   wrap: { gap: 12, width: '100%' },
   box: {
-    height: 48,
+    minHeight: 48,
     borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.stroke,
@@ -116,7 +117,8 @@ const styles = StyleSheet.create({
   input: {
     ...text.input,
     flex: 1,
-    height: '100%',
+    alignSelf: 'stretch',
+    minHeight: 46,
     paddingVertical: 0,
     includeFontPadding: false,
   },

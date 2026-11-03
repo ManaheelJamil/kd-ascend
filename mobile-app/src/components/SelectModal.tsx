@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Text, { MAX_FONT_SCALE } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Svg } from '../assets';
 import { colors, fonts, layout, text } from '../theme';
@@ -44,6 +45,7 @@ export default function SelectModal({ visible, title, options, value, onSelect, 
               onChangeText={setQuery}
               placeholder="Search"
               placeholderTextColor={colors.grey}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
               style={styles.searchInput}
               autoCorrect={false}
               onFocus={() => setSearchFocused(true)}
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
   search: {
     marginHorizontal: layout.gutter,
     marginBottom: 8,
-    height: 48,
+    minHeight: 48,
     borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.stroke,

@@ -3,11 +3,11 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Text from './AppText';
 import { colors, fonts, layout } from '../theme';
 
 type Props = {
@@ -55,14 +55,15 @@ export default function Button({ title, onPress, variant = 'primary', loading, d
 
 const styles = StyleSheet.create({
   base: {
-    height: 50,
+    minHeight: 50,
     borderRadius: layout.radius,
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primary: { backgroundColor: colors.main },
   outline: { borderWidth: 1, borderColor: colors.dark, backgroundColor: colors.white },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  label: { fontFamily: fonts.semibold, fontSize: 16, color: colors.white, textTransform: 'capitalize' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
+  label: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.white, textTransform: 'capitalize' },
 });

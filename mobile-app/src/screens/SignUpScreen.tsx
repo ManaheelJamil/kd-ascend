@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Text from '../components/AppText';
 import AuthLayout from '../components/AuthLayout';
 import TitleBlock from '../components/TitleBlock';
 import TextField from '../components/TextField';

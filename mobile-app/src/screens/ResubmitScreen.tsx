@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
 import AccountLayout from '../components/AccountLayout';
 import TextField from '../components/TextField';
 import Button from '../components/Button';

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { Svg } from '../assets';
 import { colors, fonts, text } from '../theme';
 import { formatBytes } from '../utils/format';

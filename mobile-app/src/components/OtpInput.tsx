@@ -1,5 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Text, { MAX_FONT_SCALE } from './AppText';
 import { colors, fonts } from '../theme';
 
 type Props = {
@@ -43,6 +44,7 @@ const OtpInput = forwardRef<OtpInputHandle, Props>(function OtpInput(
         })}
       </View>
       <TextInput
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
         ref={inputRef}
         value={value}
         onChangeText={handleChange}

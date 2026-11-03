@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { Svg } from '../assets';
 import { text } from '../theme';
 import AppModal from './AppModal';
@@ -38,5 +39,5 @@ const styles = StyleSheet.create({
   top: { alignItems: 'center', gap: 30, width: '100%' },
   texts: { alignItems: 'center', gap: 5, width: '100%' },
   body: { maxWidth: 326 },
-  button: { width: 186 },
+  button: { minWidth: 186, alignSelf: 'center' },
 });

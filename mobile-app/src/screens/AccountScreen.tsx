@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
 import AccountLayout from '../components/AccountLayout';
 import BottomNav from '../components/BottomNav';
 import {
@@ -125,7 +126,8 @@ export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
 
 const styles = StyleSheet.create({
   card: {
-    height: 81,
+    minHeight: 81,
+    paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: colors.dark,
     flexDirection: 'row',
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 27,
+    minHeight: 27,
     paddingHorizontal: 10,
     borderRadius: 100,
     backgroundColor: 'rgba(165,255,114,0.24)',
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
   rowText: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 25, color: colors.text },
   logout: {
     marginTop: 29,
-    height: 45,
+    minHeight: 45,
     borderRadius: layout.radius,
     backgroundColor: colors.error,
     flexDirection: 'row',

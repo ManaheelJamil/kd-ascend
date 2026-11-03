@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
 import AccountLayout from '../components/AccountLayout';
 import TitleBlock from '../components/TitleBlock';
 import TextField from '../components/TextField';
@@ -272,7 +273,8 @@ export default function PaymentDetailsScreen({ navigation }: ScreenProps<'Paymen
 const styles = StyleSheet.create({
   optionsTop: { gap: 18 },
   option: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 8,
     borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.stroke,

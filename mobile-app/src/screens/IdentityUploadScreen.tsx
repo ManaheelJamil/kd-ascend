@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
 import AuthLayout from '../components/AuthLayout';
 import TitleBlock from '../components/TitleBlock';
 import Button from '../components/Button';

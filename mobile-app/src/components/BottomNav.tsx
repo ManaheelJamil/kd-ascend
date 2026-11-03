@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconNavAccount, IconNavBookings, IconNavEarnings, IconNavHome } from './AccountIcons';
 import { colors, fonts } from '../theme';

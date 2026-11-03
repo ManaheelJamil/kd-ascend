@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { Svg } from '../assets';
 import { colors, fonts, text } from '../theme';
 import AppModal from './AppModal';
@@ -70,7 +71,8 @@ const styles = StyleSheet.create({
   option: {
     flex: 1,
     maxWidth: 147,
-    height: 68,
+    minHeight: 68,
+    paddingVertical: 8,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

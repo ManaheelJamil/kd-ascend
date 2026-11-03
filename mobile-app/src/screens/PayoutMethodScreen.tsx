@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
 import AuthLayout from '../components/AuthLayout';
 import TitleBlock from '../components/TitleBlock';
 import Button from '../components/Button';
@@ -68,7 +69,8 @@ const styles = StyleSheet.create({
   title: { marginTop: 26 },
   options: { marginTop: 32, gap: 18 },
   option: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 8,
     borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.stroke,

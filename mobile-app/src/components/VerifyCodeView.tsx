@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { colors, fonts } from '../theme';
 import { config } from '../config';
 import { minutesFromSeconds } from '../utils/format';

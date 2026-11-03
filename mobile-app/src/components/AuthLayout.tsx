@@ -49,6 +49,7 @@ export default function AuthLayout({ children, footer, onBack, sheetPaddingTop =
           bounces={false}
           overScrollMode="never"
         >
+          {onBack ? <BackButton onPress={onBack} style={[styles.back, { top: Math.max(56, insets.top + 8) }]} /> : null}
           <View style={[styles.sheet, { paddingTop: sheetPaddingTop, paddingBottom: Math.max(insets.bottom, 12) + 24 }]}>
             <View style={contentStyle}>{children}</View>
             {footer ? (
@@ -61,7 +62,7 @@ export default function AuthLayout({ children, footer, onBack, sheetPaddingTop =
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {onBack ? <BackButton onPress={onBack} style={[styles.back, { top: Math.max(56, insets.top + 8) }]} /> : null}
+      <View pointerEvents="none" style={[styles.statusCover, { height: insets.top }]} />
     </View>
   );
 }
@@ -82,5 +83,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.gutter,
   },
   spacer: { flexGrow: 1, minHeight: 32 },
-  back: { position: 'absolute', left: 20 },
+  back: { position: 'absolute', left: 20, zIndex: 2 },
+  statusCover: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.dark },
 });

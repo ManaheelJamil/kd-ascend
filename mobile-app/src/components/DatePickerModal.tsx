@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
+import Text from './AppText';
 import { images, Svg } from '../assets';
 import { colors, fonts } from '../theme';
 import AppModal, { CloseButton } from './AppModal';
