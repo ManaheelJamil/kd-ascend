@@ -4,7 +4,7 @@
  * the app shows everything pre-filled and only those fields can be changed.
  */
 import { serverTimestamp, updateDoc } from '@react-native-firebase/firestore';
-import { userRef, type PersonalInfo, type StoredFile } from './userService';
+import { userRef, type PersonalInfo, type StoredFile, type UserDoc } from './userService';
 
 export const RESUBMIT_FIELDS = [
   { key: 'fullName', label: 'Full Name' },
@@ -26,11 +26,12 @@ export const resubmitLabel = (key: string) => RESUBMIT_FIELDS.find((f) => f.key 
 export function resubmitApplication(
   uid: string,
   from: 'blacklisted' | 'rejected',
-  changes: { profile: PersonalInfo; identityDocument?: StoredFile },
+  changes: { profile: PersonalInfo; identityDocument?: StoredFile; identityDocuments?: UserDoc['identityDocuments'] },
 ) {
   return updateDoc(userRef(uid), {
     profile: changes.profile,
     ...(changes.identityDocument ? { identityDocument: changes.identityDocument } : {}),
+    ...(changes.identityDocuments ? { identityDocuments: changes.identityDocuments } : {}),
     status: 'under_review',
     resubmittedFrom: from,
     resubmittedAt: serverTimestamp(),

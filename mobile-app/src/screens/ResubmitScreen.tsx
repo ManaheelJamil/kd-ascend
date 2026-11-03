@@ -6,7 +6,7 @@ import TextField from '../components/TextField';
 import Button from '../components/Button';
 import SelectModal from '../components/SelectModal';
 import DatePickerModal from '../components/DatePickerModal';
-import UploadBox from '../components/UploadBox';
+import IdentityDocsForm from '../components/IdentityDocsForm';
 import { PendingReviewModal } from '../components/AccountModals';
 import { CalendarIcon } from '../components/Icons';
 import { IconChevronRight } from '../components/AccountIcons';
@@ -14,7 +14,7 @@ import { Svg } from '../assets';
 import { useAuth } from '../context/AuthContext';
 import type { PersonalInfo } from '../services/userService';
 import { resubmitApplication, resubmitLabel, type ResubmitField } from '../services/resubmit';
-import { pickDocument, uploadUserFile, type PickedFile } from '../services/storageService';
+import { draftFromProfile, primaryDocument, uploadDraft, validateDraft, type IdDraft } from '../services/identityDocs';
 import { friendlyError } from '../services/errors';
 import { COUNTRIES, GENDERS } from '../data/options';
 import { formatDate, fromIsoDate, toIsoDate } from '../utils/format';
@@ -64,8 +64,10 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
     placeOfBirth: saved?.placeOfBirth ?? '',
     address: saved?.address ?? '',
   });
-  const [docType, setDocType] = useState(profile?.identityDocument?.label ?? '');
-  const [docFile, setDocFile] = useState<PickedFile | null>(null);
+  // Student Pass / IC, front and back — pre-filled with what the user uploaded before.
+  const [idDocs, setIdDocs] = useState<IdDraft>(() => draftFromProfile(profile));
+  const initialIdDocs = useRef(idDocs);
+  const idDocsChanged = JSON.stringify(idDocs) !== JSON.stringify(initialIdDocs.current);
   // Payment details are edited on the Payment Details screen; compare to know they were updated.
   const initialPayout = useRef(JSON.stringify(profile?.payout ?? null));
   const payoutChanged = JSON.stringify(profile?.payout ?? null) !== initialPayout.current;
@@ -81,18 +83,6 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
     if (errors[key] || errors.form) setErrors((e) => ({ ...e, [key]: null, form: null }));
   };
 
-  const browse = async () => {
-    try {
-      const picked = await pickDocument();
-      if (picked) {
-        setDocFile(picked);
-        setErrors((e) => ({ ...e, identityDocument: null, form: null }));
-      }
-    } catch (e) {
-      setErrors((x) => ({ ...x, identityDocument: e instanceof Error ? e.message : friendlyError(e) }));
-    }
-  };
-
   const onSubmit = async () => {
     if (!user) return;
     const next: Errors = {};
@@ -104,11 +94,7 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
     if (can('placeOfBirth')) next.placeOfBirth = required(form.placeOfBirth, 'Please select your place of birth.');
     if (can('address')) next.address = required(form.address, 'Please enter your address.');
     if (can('identityDocument')) {
-      next.identityDocument = !docType
-        ? 'Please select the document type.'
-        : !docFile
-          ? 'Please upload a new identity document.'
-          : null;
+      next.identityDocument = !idDocsChanged ? 'Please upload new photos of your document.' : validateDraft(idDocs);
     }
     if (can('payout') && !payoutChanged) next.payout = 'Please update your payment details first.';
     setErrors(next);
@@ -116,10 +102,8 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
 
     setLoading(true);
     try {
-      const identityDocument =
-        can('identityDocument') && docFile
-          ? { ...(await uploadUserFile(user.uid, 'identity', docFile)), label: docType }
-          : undefined;
+      const identityDocuments = can('identityDocument') ? await uploadDraft(user.uid, idDocs) : undefined;
+      const identityDocument = identityDocuments ? primaryDocument(identityDocuments) : undefined;
       await resubmitApplication(user.uid, from, {
         profile: {
           ...form,
@@ -128,6 +112,7 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
           address: form.address.trim(),
         },
         identityDocument,
+        identityDocuments,
       });
       setDone(true);
     } catch (e) {
@@ -139,7 +124,7 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
 
   const dob = fromIsoDate(form.dateOfBirth);
   const chevron = <Svg.IconChevronDown />;
-  const selectValue = (k: SelectKey) => (k === 'docType' ? docType : form[k]);
+  const selectValue = (k: SelectKey) => (k === 'docType' ? '' : form[k]);
   const payout = profile?.payout;
   const payoutSummary = payout
     ? payout.method === 'paynow'
@@ -246,27 +231,28 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
       <Text style={styles.section}>Identity Document</Text>
       {can('identityDocument') ? (
         <View style={styles.fields}>
-          <TextField
-            label="Document Type"
-            placeholder="Select"
-            value={docType}
-            onPressField={() => setSelect('docType')}
-            right={chevron}
+          <Text style={styles.summaryHint}>
+            Upload at least one document — Student Pass or Identity Card (IC) — with the front and back side.
+          </Text>
+          <IdentityDocsForm
+            value={idDocs}
+            onChange={setIdDocs}
+            error={errors.identityDocument}
+            onError={(m) => setErrors((e) => ({ ...e, identityDocument: m, form: null }))}
+            disabled={loading}
           />
-          <View style={styles.upload}>
-            <Text style={text.label}>
-              Upload New Document <Text style={styles.side}>(Front Side)</Text>
-            </Text>
-            <UploadBox value={docFile} onPress={browse} error={errors.identityDocument} loading={loading} />
-          </View>
         </View>
       ) : (
         <Locked locked>
           <View style={styles.summary}>
             <Text style={styles.summaryText} numberOfLines={1}>
-              {profile?.identityDocument
-                ? `${profile.identityDocument.label || 'Document'} · ${profile.identityDocument.name}`
-                : 'No document uploaded'}
+              {profile?.identityDocuments
+                ? [profile.identityDocuments.studentPass && 'Student Pass', profile.identityDocuments.ic && 'Identity Card (IC)']
+                    .filter(Boolean)
+                    .join(' · ') + ' (front & back)'
+                : profile?.identityDocument
+                  ? `${profile.identityDocument.label || 'Document'} · ${profile.identityDocument.name}`
+                  : 'No document uploaded'}
             </Text>
           </View>
         </Locked>
@@ -310,10 +296,7 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
         value={select ? selectValue(select) || null : null}
         onClose={() => setSelect(null)}
         onSelect={(v) => {
-          if (select === 'docType') {
-            setDocType(v);
-            setErrors((e) => ({ ...e, identityDocument: null }));
-          } else if (select) set(select, v);
+          if (select && select !== 'docType') set(select, v);
           setSelect(null);
         }}
       />

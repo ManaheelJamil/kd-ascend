@@ -46,7 +46,7 @@ type Target =
 function firstOnboardingRoute(p: UserDoc): OnboardingRoute {
   if (!p.phoneVerified) return 'VerifyPhone';
   if (!p.emailVerified) return 'VerifyEmail';
-  if (p.identityDocument || p.onboardingStep === 'payout') return 'PayoutMethod';
+  if (p.identityDocument || p.identityDocuments || p.onboardingStep === 'payout') return 'PayoutMethod';
   if (p.profile?.fullName || p.onboardingStep === 'identity') return 'IdentityUpload';
   return 'PersonalInfo';
 }

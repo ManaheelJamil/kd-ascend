@@ -58,7 +58,10 @@ export type UserDoc = {
   onboardingStep: OnboardingStep;
   status: AccountStatus;
   profile?: PersonalInfo;
+  /** Old single document (kept with the first front side for older screens). */
   identityDocument?: StoredFile;
+  /** Student Pass and / or IC, front and back (services/identityDocs.ts). */
+  identityDocuments?: Partial<Record<'studentPass' | 'ic', { front: StoredFile; back: StoredFile }>>;
   payout?: Payout;
   /** Test OTP mode only (see services/devOtp.ts). */
   testVerification?: { phone?: boolean; email?: boolean };
@@ -104,6 +107,15 @@ export const savePersonalInfo = (uid: string, profile: PersonalInfo) =>
 export const saveIdentityDocument = (uid: string, identityDocument: StoredFile) =>
   updateDoc(userRef(uid), { identityDocument, onboardingStep: 'payout', updatedAt: serverTimestamp() });
 
+/** Step 2: Student Pass and / or IC, front and back. */
+export const saveIdentityDocuments = (uid: string, identityDocuments: NonNullable<UserDoc['identityDocuments']>) =>
+  updateDoc(userRef(uid), {
+    identityDocuments,
+    identityDocument: identityDocuments.studentPass?.front ?? identityDocuments.ic?.front,
+    onboardingStep: 'payout',
+    updatedAt: serverTimestamp(),
+  });
+
 /**
  * Final step: the account goes to admin review. If an admin already approved the account
  * while it was being filled in, the status is left as it is.
@@ -125,7 +137,7 @@ export async function submitApplication(uid: string, payout: Payout) {
  * so a returning user (e.g. after a password reset) never has to fill the profile in again.
  */
 export const isOnboardingComplete = (p: UserDoc) =>
-  p.onboardingStep === 'done' || (!!p.profile?.fullName && !!p.identityDocument && !!p.payout);
+  p.onboardingStep === 'done' || (!!p.profile?.fullName && !!(p.identityDocument || p.identityDocuments) && !!p.payout);
 
 /** Sends a fully filled-in account that was never submitted to admin review. */
 export const markSubmitted = (uid: string) =>

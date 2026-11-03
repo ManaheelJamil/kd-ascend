@@ -42,7 +42,7 @@ service cloud.firestore {
       function onlyAppFields() {
         return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'phone', 'phoneVerified', 'onboardingStep', 'status', 'profile',
-          'identityDocument', 'payout', 'testVerification', 'updatedAt', 'submittedAt',
+          'identityDocument', 'identityDocuments', 'payout', 'testVerification', 'updatedAt', 'submittedAt',
           'resubmittedFrom', 'resubmittedAt'
         ]);
       }

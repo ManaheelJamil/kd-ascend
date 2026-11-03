@@ -5,12 +5,12 @@ import AuthLayout from '../components/AuthLayout';
 import TitleBlock from '../components/TitleBlock';
 import Button from '../components/Button';
 import Stepper from '../components/Stepper';
-import UploadBox from '../components/UploadBox';
+import IdentityDocsForm from '../components/IdentityDocsForm';
 import { ArrowIcon } from '../components/Icons';
 import { Svg } from '../assets';
 import { useAuth } from '../context/AuthContext';
-import { pickDocument, uploadUserFile, type PickedFile } from '../services/storageService';
-import { saveIdentityDocument } from '../services/userService';
+import { saveIdentityDocuments } from '../services/userService';
+import { draftFromProfile, uploadDraft, validateDraft, type IdDraft } from '../services/identityDocs';
 import { friendlyError } from '../services/errors';
 import { colors, fonts, text } from '../theme';
 import type { ScreenProps } from '../navigation/types';
@@ -30,32 +30,17 @@ function Accepted({ label }: { label: string }) {
 
 export default function IdentityUploadScreen({ navigation }: ScreenProps<'IdentityUpload'>) {
   const { user, profile } = useAuth();
-  const existing = profile?.identityDocument ?? null;
-  const [file, setFile] = useState<PickedFile | null>(null);
+  const [docs, setDocs] = useState<IdDraft>(() => draftFromProfile(profile));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const browse = async () => {
-    try {
-      const picked = await pickDocument();
-      if (picked) {
-        setFile(picked);
-        setError(null);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : friendlyError(e));
-    }
-  };
-
   const onNext = async () => {
     if (!user) return;
-    if (!file && !existing) return setError('Please upload your identity document.');
+    const problem = validateDraft(docs);
+    if (problem) return setError(problem);
     setLoading(true);
     try {
-      if (file) {
-        const stored = await uploadUserFile(user.uid, 'identity', file);
-        await saveIdentityDocument(user.uid, stored);
-      }
+      await saveIdentityDocuments(user.uid, await uploadDraft(user.uid, docs));
       navigation.navigate('PayoutMethod');
     } catch (e) {
       setError(friendlyError(e, 'Upload failed. Please check your connection and try again.'));
@@ -93,7 +78,9 @@ export default function IdentityUploadScreen({ navigation }: ScreenProps<'Identi
         <View style={styles.instructions}>
           <View style={styles.instructionText}>
             <Text style={text.label}>Instructions</Text>
-            <Text style={styles.hint}>Please upload a valid identity document:</Text>
+            <Text style={styles.hint}>
+              Upload at least one of these documents, with both the front and back side:
+            </Text>
           </View>
           <View style={styles.acceptedRow}>
             <Accepted label="Student Pass" />
@@ -101,17 +88,7 @@ export default function IdentityUploadScreen({ navigation }: ScreenProps<'Identi
           </View>
         </View>
 
-        <View style={styles.upload}>
-          <Text style={text.label}>
-            Upload Document <Text style={styles.side}>(Front Side)</Text>
-          </Text>
-          <UploadBox
-            value={file ?? existing}
-            onPress={browse}
-            error={error}
-            loading={loading}
-          />
-        </View>
+        <IdentityDocsForm value={docs} onChange={setDocs} error={error} onError={setError} disabled={loading} />
       </View>
     </AuthLayout>
   );
@@ -123,13 +100,11 @@ const styles = StyleSheet.create({
   instructions: { gap: 12 },
   instructionText: { gap: 8 },
   hint: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 18.48, color: colors.grey },
-  acceptedRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  accepted: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  tickCircle: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.green },
+  acceptedRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, rowGap: 10 },
+  accepted: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  tickCircle: { width: 18, height: 18, flexShrink: 0, borderRadius: 9, backgroundColor: colors.green },
   tickPos: { position: 'absolute', left: 2.89, top: 2.92 },
-  acceptedText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 18.48, color: colors.text },
-  upload: { gap: 12 },
-  side: { fontFamily: fonts.regular, color: colors.grey },
+  acceptedText: { flexShrink: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 18.48, color: colors.text },
   footer: { flexDirection: 'row', justifyContent: 'space-between', gap: 18 },
   half: { flex: 1, maxWidth: 186 },
 });
