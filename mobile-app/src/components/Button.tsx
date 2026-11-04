@@ -43,7 +43,9 @@ export default function Button({ title, onPress, variant = 'primary', loading, d
       ) : (
         <View style={styles.row}>
           {left}
-          <Text style={[styles.label, outline && { color: colors.text }]} numberOfLines={1}>
+          {/* Fixed size: on Android the phone's font-size setting made the label draw wider than
+              it was measured, so the arrow sat on top of the last letter ("Go To Log→n"). */}
+          <Text style={[styles.label, outline && { color: colors.text }]} allowFontScaling={false} textBreakStrategy="simple">
             {title}
           </Text>
           {right}
@@ -64,7 +66,6 @@ const styles = StyleSheet.create({
   },
   primary: { backgroundColor: colors.main },
   outline: { borderWidth: 1, borderColor: colors.dark, backgroundColor: colors.white },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
-  // No textTransform: on Android it made the label measure narrower than it draws, so icons overlapped the text.
-  label: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, maxWidth: '100%' },
+  label: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22, color: colors.white, includeFontPadding: false, paddingHorizontal: 1, textAlign: 'center' },
 });

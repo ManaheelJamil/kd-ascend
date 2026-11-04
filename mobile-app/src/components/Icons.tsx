@@ -11,9 +11,7 @@ export function ArrowIcon({ dark = false, left = false }: { dark?: boolean; left
   const Icon = dark ? Svg.IconArrowDark : Svg.IconArrowRight;
   return (
     <View style={[styles.arrowBox, left && styles.flipX]}>
-      <View style={styles.arrowSvg}>
-        <Icon />
-      </View>
+      <Icon width={14} height={12} />
     </View>
   );
 }
@@ -57,9 +55,9 @@ export function FlippedY({ children, style }: { children: React.ReactNode; style
 }
 
 const styles = StyleSheet.create({
-  arrowBox: { width: 12, height: 12, justifyContent: 'center' },
-  // inset -5.89px -6.67% around a 12 × 0 line, centred vertically in the 12pt box
-  arrowSvg: { position: 'absolute', left: -0.8, top: 0.11 },
+  // The arrow sits in normal layout with its real size, so the text next to it can never run under it.
+  // top: 1 lines the arrow up with the middle of the capital letters (Plus Jakarta Sans sits ~1pt low in its line).
+  arrowBox: { width: 14, height: 12, top: 1, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   flipX: { transform: [{ scaleX: -1 }] },
   flipY: { transform: [{ scaleY: -1 }] },
   box24: { width: 24, height: 24 },
