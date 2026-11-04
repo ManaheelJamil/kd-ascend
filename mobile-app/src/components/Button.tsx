@@ -65,5 +65,6 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: colors.main },
   outline: { borderWidth: 1, borderColor: colors.dark, backgroundColor: colors.white },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
-  label: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.white, textTransform: 'capitalize' },
+  // No textTransform: on Android it made the label measure narrower than it draws, so icons overlapped the text.
+  label: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
 });

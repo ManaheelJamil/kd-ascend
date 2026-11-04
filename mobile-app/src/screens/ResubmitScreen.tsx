@@ -14,7 +14,7 @@ import { Svg } from '../assets';
 import { useAuth } from '../context/AuthContext';
 import type { PersonalInfo } from '../services/userService';
 import { resubmitApplication, resubmitLabel, type ResubmitField } from '../services/resubmit';
-import { draftFromProfile, primaryDocument, uploadDraft, validateDraft, type IdDraft } from '../services/identityDocs';
+import { draftFromProfile, primaryDocument, uploadDraft, validateDraft, type DocKind, type IdDraft } from '../services/identityDocs';
 import { friendlyError } from '../services/errors';
 import { COUNTRIES, GENDERS } from '../data/options';
 import { formatDate, fromIsoDate, toIsoDate } from '../utils/format';
@@ -67,6 +67,9 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
   // Student Pass / IC, front and back — pre-filled with what the user uploaded before.
   const [idDocs, setIdDocs] = useState<IdDraft>(() => draftFromProfile(profile));
   const initialIdDocs = useRef(idDocs);
+  const [idKind, setIdKind] = useState<DocKind | null>(() =>
+    idDocs.studentPass.front || idDocs.studentPass.back ? 'studentPass' : idDocs.ic.front || idDocs.ic.back ? 'ic' : null,
+  );
   const idDocsChanged = JSON.stringify(idDocs) !== JSON.stringify(initialIdDocs.current);
   // Payment details are edited on the Payment Details screen; compare to know they were updated.
   const initialPayout = useRef(JSON.stringify(profile?.payout ?? null));
@@ -232,9 +235,11 @@ export default function ResubmitScreen({ navigation }: ScreenProps<'Resubmit'>) 
       {can('identityDocument') ? (
         <View style={styles.fields}>
           <Text style={styles.summaryHint}>
-            Upload at least one document — Student Pass or Identity Card (IC) — with the front and back side.
+            Choose Student Pass or Identity Card (IC) and upload its front and back side.
           </Text>
           <IdentityDocsForm
+            selected={idKind}
+            onSelect={setIdKind}
             value={idDocs}
             onChange={setIdDocs}
             error={errors.identityDocument}
