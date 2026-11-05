@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { Alert } from 'react-native';
+import { NavigationContainer, DefaultTheme, CommonActions, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { isOnboardingComplete, type UserDoc } from '../services/userService';
@@ -7,6 +8,9 @@ import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import type { OnboardingRoute, RootStackParamList } from './types';
 import { colors } from '../theme';
 import { config } from '../config';
+import { useResetLink } from './resetLink';
+
+const navRef = createNavigationContainerRef<RootStackParamList>();
 
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -112,6 +116,28 @@ export default function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
 
   const showSplash = !fontsReady || !minSplashDone || target.kind === 'splash';
 
+  // Password reset link from the email: open Create New Password with the link's token.
+  const resetLink = useResetLink();
+  const [navReady, setNavReady] = useState(false);
+  useEffect(() => {
+    if (!resetLink.token || showSplash || !navReady || !navRef.isReady()) return;
+    const token = resetLink.token;
+    resetLink.clear();
+    if (target.kind !== 'auth') {
+      Alert.alert('Already signed in', 'Log out first, then open the reset link from your email again.');
+      return;
+    }
+    navRef.dispatch(
+      CommonActions.reset({
+        index: 1,
+        routes: [{ name: 'Login' }, { name: 'CreateNewPassword', params: { mode: 'email', resetToken: token } }],
+      }),
+    );
+  }, [resetLink.token, showSplash, navReady, target.kind]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (showSplash) setNavReady(false);
+  }, [showSplash]);
+
   // The first screen registered in a group is the one shown when the group mounts.
   const onboardingOrder = useMemo(() => {
     if (target.kind !== 'onboarding') return [];
@@ -122,7 +148,7 @@ export default function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
   if (showSplash) return <SplashScreen />;
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navRef} theme={navTheme} onReady={() => setNavReady(true)}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {target.kind === 'auth' && (
           <Stack.Group>
