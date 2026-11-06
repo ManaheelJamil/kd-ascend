@@ -6,9 +6,8 @@ import TextField from '../components/TextField';
 import Button from '../components/Button';
 import ChannelModal, { type Channel } from '../components/ChannelModal';
 import { isEmail, toE164 } from '../utils/validation';
-import { sendPasswordResetLink, sendTestSmsResetCode } from '../services/otpService';
+import { sendPasswordResetCode, sendTestSmsResetCode } from '../services/otpService';
 import { isDevOtp } from '../services/devOtp';
-import ResultModal from '../components/ResultModal';
 import { isPhoneAvailable } from '../services/authService';
 import { phoneLockRemaining, sendSignInCode } from '../services/phoneService';
 import { errorCode, friendlyError, isFunctionMissing } from '../services/errors';
@@ -20,8 +19,6 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState(false);
   const [sending, setSending] = useState<Channel | null>(null);
-  /** Masked address the reset link went to; shows the "Check Your Email" popup. */
-  const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
 
   /** Email stays as typed (lower-cased); phone numbers become E.164. */
   const normalized = () => (isEmail(identifier) ? identifier.trim().toLowerCase() : toE164(identifier));
@@ -44,15 +41,21 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
     setSending(channel);
     try {
       if (channel === 'email') {
-        // The email holds a "Reset Password" button that opens the reset page (valid 24 hours).
-        const res = await sendPasswordResetLink(id);
+        // A 6-digit code goes to the account's email; the user types it on the next screen (like SMS).
+        const res = await sendPasswordResetCode(id);
         setSending(null);
         setModal(false);
-        if (res.status === 'cooldown') {
-          setError(`We’ve just sent a reset link to ${res.destination}. Please check your email or try again in ${res.retryAfterSeconds} seconds.`);
+        if (res.status === 'already-verified') return;
+        if (res.status === 'locked') {
+          setError(`You’ve entered the wrong code multiple times. Please try again after ${minutesFromSeconds(res.retryAfterSeconds)} minutes.`);
           return;
         }
-        setLinkSentTo(res.destination);
+        navigation.navigate('ResetVerify', {
+          channel: 'email',
+          identifier: id,
+          destination: res.destination,
+          cooldownSeconds: res.status === 'sent' ? res.cooldownSeconds : res.retryAfterSeconds,
+        });
         return;
       }
 
@@ -127,17 +130,6 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
         onSelect={onChannel}
       />
 
-      <ResultModal
-        visible={!!linkSentTo}
-        title="Check Your Email"
-        message={`We’ve sent a password reset link to ${linkSentTo ?? 'your email'}. Tap “Reset Password” in the email to create a new password, then log in here.`}
-        buttonLabel="Back To Login"
-        onPress={() => {
-          setLinkSentTo(null);
-          navigation.popToTop();
-        }}
-        onClose={() => setLinkSentTo(null)}
-      />
     </AuthLayout>
   );
 }
