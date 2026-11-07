@@ -16,7 +16,16 @@
     "ios": {
       "bundleIdentifier": "com.hireloop.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "app-1-56416844420-ios-2fe7da3ca61aca2f4f20d1"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.hireloop.app",
