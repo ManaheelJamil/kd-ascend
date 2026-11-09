@@ -19,7 +19,7 @@ export function CorporateTabs({ tab, onChange, blacklisted }: { tab: CorporateTa
     { key: 'blacklist', label: `Blacklist Users${blacklisted ? ` (${blacklisted})` : ''}` },
   ];
   return (
-    <div role="tablist" aria-label="Corporate sections" className="flex gap-2 border-b border-line sm:gap-4">
+    <div role="tablist" aria-label="Corporate sections" className="flex gap-3 sm:gap-5">
       {items.map((it) => {
         const on = it.key === tab;
         return (
@@ -30,8 +30,8 @@ export function CorporateTabs({ tab, onChange, blacklisted }: { tab: CorporateTa
             aria-selected={on}
             onClick={() => onChange(it.key)}
             className={cn(
-              '-mb-px border-b-2 px-3 pb-3 pt-1 text-[14.5px] font-semibold whitespace-nowrap transition sm:px-5 sm:text-[15.8px]',
-              on ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink',
+              'min-w-[120px] border-b-2 px-4 pb-2 pt-1 text-center text-[14px] font-semibold whitespace-nowrap transition sm:min-w-[150px]',
+              on ? 'border-brand text-brand' : 'border-line text-muted hover:border-brand/40 hover:text-ink',
             )}
           >
             {it.label}
@@ -292,13 +292,13 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
             Users who are restricted from viewing or applying to jobs posted by this corporate.
           </p>
         </div>
-        <Button onClick={() => setAdding(true)} className="w-full sm:w-auto">
-          <Plus className="size-[18px]" />
+        <Button onClick={() => setAdding(true)} className="h-10 w-full rounded-control px-4 text-[14px] font-semibold sm:w-auto">
+          <Plus className="size-4" />
           Add User
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden rounded-[16px] border-0 shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
         {rows.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-14 text-center">
             <span className="grid size-12 place-items-center rounded-full bg-brand/10 text-brand">
@@ -311,20 +311,12 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
           <>
             {/* Computers and tablets: table */}
             <table className="hidden w-full text-left md:table">
-              <thead>
-                <tr className="border-b border-line text-[13px] text-muted">
-                  <th className="px-5 py-3.5 font-medium">UID</th>
-                  <th className="px-3 py-3.5 font-medium">Name</th>
-                  <th className="px-3 py-3.5 font-medium">Date</th>
-                  <th className="px-3 py-3.5 font-medium">Reason</th>
-                  <th className="px-5 py-3.5 text-right font-medium">Action</th>
-                </tr>
-              </thead>
+              <caption className="sr-only">Blacklisted users: user ID, name, date added, reason, action</caption>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={r.uid} className="border-b border-line text-[14px] last:border-0">
-                    <td className="px-5 py-4 font-semibold text-ink">{code(r)}</td>
-                    <td className="px-3 py-4 font-medium text-ink">
+                  <tr key={r.uid} className="border-b border-line text-[13.5px] last:border-0">
+                    <td className="py-5 pr-3 pl-6 font-semibold text-ink">{code(r)}</td>
+                    <td className="px-3 py-5 font-semibold text-ink">
                       {r.user ? (
                         <Link href={`/users/${r.uid}`} className="hover:text-brand hover:underline">
                           {name(r)}
@@ -333,14 +325,18 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
                         name(r)
                       )}
                     </td>
-                    <td className="px-3 py-4 whitespace-nowrap text-muted">{day(r.at)}</td>
-                    <td className="max-w-[280px] px-3 py-4 text-muted">
+                    <td className="px-3 py-5 whitespace-nowrap text-ink/80">{day(r.at)}</td>
+                    <td className="max-w-[320px] px-3 py-5 text-ink/80">
                       <span className="line-clamp-2">{r.reason}</span>
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <Button size="sm" variant="soft" onClick={() => setUnblocking(r)}>
+                    <td className="py-5 pr-6 pl-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setUnblocking(r)}
+                        className="rounded-full px-3 py-1 text-[13px] font-semibold text-brand transition hover:bg-brand/10"
+                      >
                         Unblock
-                      </Button>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -357,9 +353,13 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
                     <p className="mt-1 text-[13px] text-muted">{r.reason}</p>
                     <p className="mt-1 text-[12px] text-muted">{day(r.at)}</p>
                   </div>
-                  <Button size="sm" variant="soft" onClick={() => setUnblocking(r)}>
+                  <button
+                    type="button"
+                    onClick={() => setUnblocking(r)}
+                    className="rounded-full bg-brand/10 px-3 py-1 text-[13px] font-semibold text-brand"
+                  >
                     Unblock
-                  </Button>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -372,7 +372,7 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
           <span>
             Showing {(current - 1) * PAGE + 1}–{Math.min(current * PAGE, rows.length)} of {rows.length}
           </span>
-          {pages > 1 ? (
+          {rows.length ? (
             <div className="flex gap-1.5">
               {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
                 <button
@@ -382,7 +382,7 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
                   aria-current={n === current ? 'page' : undefined}
                   className={cn(
                     'grid size-8 place-items-center rounded-md text-[13px] font-medium',
-                    n === current ? 'bg-brand text-white' : 'bg-brand/10 text-brand hover:bg-brand/15',
+                    n === current ? 'bg-brand/20 text-brand ring-1 ring-brand/40' : 'bg-brand/10 text-brand/80 hover:bg-brand/15',
                   )}
                 >
                   {n}

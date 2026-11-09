@@ -97,7 +97,6 @@ export default function CorporatesPage() {
     return filtered.sort((a, b) => (val(a) < val(b) ? -sort.dir : val(a) > val(b) ? sort.dir : 0));
   }, [list, q, status, sort]);
 
-  const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
   const exportCsv = () => {
     const pick = selected.size ? rows.filter((r) => selected.has(r.id)) : rows;
@@ -117,14 +116,14 @@ export default function CorporatesPage() {
   };
 
   const SortHead = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => (
-    <th className={cn('px-[18px] text-[13.5px] font-semibold text-muted', className)}>
+    <th className={cn('px-[18px] text-[13px] font-semibold text-ink', className)}>
       <button
         type="button"
         onClick={() => setSort((s) => ({ key: k, dir: s.key === k ? (s.dir === 1 ? -1 : 1) : 1 }))}
         className="inline-flex items-center gap-0.5 hover:text-ink"
       >
         {label}
-        <ChevronDown className={cn('size-5 transition', sort.key === k && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
+        {sort.key === k ? <ChevronDown className={cn('size-4 transition', sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} /> : null}
       </button>
     </th>
   );
@@ -185,7 +184,7 @@ export default function CorporatesPage() {
         </Button>
       </Card>
 
-      <Card className="overflow-hidden md:min-h-[400px]">
+      <Card className="overflow-hidden xl:min-h-[360px] xl:border-0 xl:bg-transparent">
         {/* Phones: one card per corporate instead of the wide table. */}
         <ul className="divide-y divide-line xl:hidden">
           {rows.length === 0 ? (
@@ -232,29 +231,22 @@ export default function CorporatesPage() {
         <div className="hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
             <thead>
-              <tr className="h-16 border-b border-line bg-page">
-                <th className="relative w-[24%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all"
-                    checked={allChecked}
-                    onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)))}
-                    className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
-                  />
+              <tr className="h-14">
+                <th className="w-[24%] px-[18px] text-[13px] font-semibold text-ink">
                   <button
                     type="button"
                     onClick={() => setSort((s) => ({ key: 'name', dir: s.key === 'name' ? (s.dir === 1 ? -1 : 1) : 1 }))}
                     className="inline-flex items-center gap-0.5 hover:text-ink"
                   >
                     Corporate Name
-                    <ChevronDown className={cn('size-5', sort.key === 'name' && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
+                    {sort.key === 'name' ? <ChevronDown className={cn('size-4', sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} /> : null}
                   </button>
                 </th>
                 <SortHead k="contact" label="Contact Person" className="w-[17%]" />
                 <SortHead k="email" label="Email" className="w-[23%]" />
                 <SortHead k="jobs" label="Jobs Posted" className="w-[12%]" />
                 <SortHead k="status" label="Status" className="w-[11%]" />
-                <th className="w-[13%] px-[18px] text-right text-[13.5px] font-semibold text-muted">Action</th>
+                <th className="w-[13%] px-[18px] text-center text-[13px] font-semibold text-ink">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -278,38 +270,23 @@ export default function CorporatesPage() {
                   <tr
                     key={c.id}
                     onClick={() => router.push(`/corporates/${c.id}`)}
-                    className="h-[64px] cursor-pointer border-b border-line last:border-b-0 hover:bg-page/70"
+                    className="h-[60px] cursor-pointer rounded-control hover:bg-white"
                   >
-                    <td className="relative px-[18px] pl-[51px]">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${c.name}`}
-                        checked={selected.has(c.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={() =>
-                          setSelected((s) => {
-                            const n = new Set(s);
-                            if (n.has(c.id)) n.delete(c.id);
-                            else n.add(c.id);
-                            return n;
-                          })
-                        }
-                        className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
-                      />
-                      <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
+                    <td className="px-[18px]">
+                      <p className="truncate text-[14px] font-bold text-ink">{c.name}</p>
                     </td>
-                    <td className="truncate px-[18px] text-[14px] text-muted">{c.contactName || '—'}</td>
-                    <td className="truncate px-[18px] text-[14px] text-muted" title={c.contactEmail}>
+                    <td className="truncate px-[18px] text-[13.5px] text-ink/80">{c.contactName || '—'}</td>
+                    <td className="truncate px-[18px] text-[13.5px] text-ink/80" title={c.contactEmail}>
                       {c.contactEmail || '—'}
                     </td>
-                    <td className="px-[18px] text-[14px] font-medium text-ink">{jobsPosted(c)}</td>
+                    <td className="px-[18px] text-[13.5px] text-ink/80">{jobsPosted(c)}</td>
                     <td className="px-[18px]">
                       <StatusDot status={c.status} />
                     </td>
-                    <td className="px-[18px] text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-[18px] text-center" onClick={(e) => e.stopPropagation()}>
                       <Link
                         href={`/corporates/${c.id}`}
-                        className="inline-flex h-[31px] items-center rounded-control bg-brand/10 px-3.5 text-[13px] font-medium text-brand hover:bg-brand/15"
+                        className="inline-flex h-7 items-center rounded-md bg-brand/10 px-3 text-[12px] font-semibold text-brand hover:bg-brand/15"
                       >
                         View Details
                       </Link>
@@ -323,7 +300,7 @@ export default function CorporatesPage() {
       </Card>
 
       {rows.length ? (
-        <p className="text-[13px] text-muted">
+        <p className="text-[12px] text-muted">
           Showing 1–{rows.length} of {rows.length} corporate{rows.length === 1 ? '' : 's'}
         </p>
       ) : null}

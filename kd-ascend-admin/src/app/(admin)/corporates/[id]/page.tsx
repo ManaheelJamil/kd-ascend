@@ -3,20 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Building2, ChevronRight, SquarePen, Trash2 } from 'lucide-react';
-import { Button, Card, ErrorNote, FullPageSpinner, ShortText } from '@/components/ui';
-import { DeleteCorporateDialog, StatusPicker } from '@/components/CorporateBits';
+import { SquarePen, Trash2 } from 'lucide-react';
+import { Button, ErrorNote, FullPageSpinner, ShortText, cn } from '@/components/ui';
+import { DeleteCorporateDialog } from '@/components/CorporateBits';
 import { BlacklistTab, CorporateTabs, OverviewTab, type CorporateTab } from '@/components/CorporateDetail';
 import {
   assignCorporateNumbers,
   corporateCode,
-  setCorporateStatus,
   subscribeCorporate,
   subscribeCorporates,
   type Corporate,
   type CorporateStatus,
 } from '@/lib/corporates';
-import { isoDay } from '@/lib/format';
 
 /** Figma "Corporates Detail": header, then the Overview / Blacklist Users tabs (?tab=blacklist). */
 export default function CorporateDetailsPage() {
@@ -29,7 +27,6 @@ export default function CorporateDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [statusBusy, setStatusBusy] = useState(false);
 
   useEffect(
     () =>
@@ -75,18 +72,6 @@ export default function CorporateDetailsPage() {
       </div>
     );
 
-  const changeStatus = async (s: CorporateStatus) => {
-    if (s === corporate.status) return;
-    setStatusBusy(true);
-    try {
-      await setCorporateStatus(corporate.id, s);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setStatusBusy(false);
-    }
-  };
-
   const blacklisted = Object.keys(corporate.blacklist ?? {}).length;
   const facts: { label: string; value: string; sub?: string }[] = [
     { label: 'Contact Person', value: corporate.contactName || '—', sub: corporate.industry || undefined },
@@ -97,59 +82,54 @@ export default function CorporateDetailsPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted">
-        <Link href="/corporates" className="hover:text-brand">
-          Corporates
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" />
-        <span className="truncate text-ink">{corporate.name}</span>
-      </nav>
-
-      <Card className="p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[22px] leading-7 font-bold break-words text-ink sm:text-[27px] sm:leading-8">{corporate.name}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[13.5px] text-muted">
-              <span>Corporate ID: {corporateCode(corporate)}</span>
-              <StatusPicker value={corporate.status} onChange={changeStatus} busy={statusBusy} />
-              <span className="hidden sm:inline">· Joined on {isoDay(corporate.createdAt)}</span>
-            </div>
-          </div>
-          <Link
-            href={`/corporates/${corporate.id}/edit`}
-            aria-label="Edit corporate"
-            className="grid size-10 shrink-0 place-items-center rounded-control bg-brand/10 text-brand hover:bg-brand/15"
-          >
-            <SquarePen className="size-[18px]" />
+      <div className="flex flex-col gap-5">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[12.5px] text-muted">
+          <Link href="/corporates" className="hover:text-brand">
+            Corporates
           </Link>
+          <span>/</span>
+          <span className="truncate">{corporate.name}</span>
+        </nav>
+
+        <div className="-mt-2">
+          <h1 className="text-[24px] leading-8 font-bold break-words text-ink sm:text-[28px] sm:leading-9">{corporate.name}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+            <span>Corporate ID: {corporateCode(corporate)}</span>
+            <CorporateStatusPill status={corporate.status} />
+          </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <span className="grid size-16 shrink-0 place-items-center rounded-full border border-line bg-page text-navy">
-            <Building2 className="size-7" />
+        <div className="flex items-start gap-4 sm:gap-6">
+          <span className="grid size-[60px] shrink-0 place-items-center rounded-full border border-line bg-white px-1 text-center text-[9px] leading-tight font-bold text-ink uppercase sm:size-[68px]">
+            {corporate.name.length > 18 ? corporate.name.split(/\s+/).slice(0, 2).join(' ') : corporate.name}
           </span>
-          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4 lg:gap-x-8">
             {facts.map((f) => (
               <div key={f.label} className="min-w-0">
-                <dt className="text-[12.5px] text-muted">{f.label}</dt>
-                <dd className="mt-0.5 text-[14.5px] font-semibold text-ink">
+                <dt className="text-[11.5px] text-muted">{f.label}</dt>
+                <dd className={cn('mt-0.5 text-[13.5px] text-ink', f.label === 'Contact Person' && 'font-semibold')}>
                   {f.label === 'Email' ? <span className="block break-all">{f.value}</span> : <ShortText text={f.value} />}
                 </dd>
-                {f.sub ? <dd className="text-[12px] text-muted">{f.sub}</dd> : null}
+                {f.sub ? <dd className="text-[11px] text-muted">{f.sub}</dd> : null}
               </div>
             ))}
           </dl>
+          <Link
+            href={`/corporates/${corporate.id}/edit`}
+            aria-label="Edit corporate"
+            className="grid size-9 shrink-0 place-items-center rounded-control bg-brand/10 text-brand hover:bg-brand/15"
+          >
+            <SquarePen className="size-4" />
+          </Link>
         </div>
 
-        <div className="mt-6">
-          <CorporateTabs tab={tab} onChange={setTab} blacklisted={blacklisted} />
-        </div>
-      </Card>
+        <CorporateTabs tab={tab} onChange={setTab} blacklisted={blacklisted} />
+      </div>
 
       {tab === 'overview' ? <OverviewTab corporate={corporate} /> : <BlacklistTab corporate={corporate} />}
 
-      <div>
-        <Button variant="ghost" className="text-danger hover:bg-danger/5" onClick={() => setDeleting(true)}>
+      <div className="pt-2">
+        <Button variant="ghost" className="text-[14px] text-danger hover:bg-danger/5" onClick={() => setDeleting(true)}>
           <Trash2 className="size-[18px]" />
           Delete corporate
         </Button>
@@ -161,5 +141,20 @@ export default function CorporateDetailsPage() {
         onDone={() => router.replace('/corporates')}
       />
     </div>
+  );
+}
+
+const PILL: Record<CorporateStatus, string> = {
+  active: 'bg-success/15 text-success',
+  pending: 'bg-brand/15 text-brand',
+  inactive: 'bg-muted/15 text-muted',
+};
+
+/** Figma: small green "Active" pill next to the Corporate ID. */
+function CorporateStatusPill({ status }: { status: CorporateStatus }) {
+  return (
+    <span className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11px] font-semibold', PILL[status] ?? PILL.pending)}>
+      {status === 'active' ? 'Active' : status === 'inactive' ? 'Inactive' : 'Pending'}
+    </span>
   );
 }
