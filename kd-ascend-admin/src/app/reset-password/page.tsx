@@ -6,10 +6,26 @@ import { CircleCheck, CircleX, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 /**
  * Opened from the "Reset Password →" button in the Password Reset Request email.
- * Looks like the app's Create New Password screen (Figma 141:1327) and talks to /api/fn.
+ * On a phone it hands the link to the KD Ascend app (hireloop://reset-password?token=…), which
+ * opens its own Create New Password screen. The form below (Figma 141:1327, talks to /api/fn)
+ * is only the fallback: computers, or when the app isn't installed.
  */
 
-type Phase = 'checking' | 'form' | 'expired' | 'done';
+type Phase = 'app' | 'checking' | 'form' | 'expired' | 'done';
+
+const APP_PACKAGE = 'com.hireloop.app';
+const APP_SCHEME = 'hireloop';
+
+const isAndroid = () => typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+const isPhone = () => typeof navigator !== 'undefined' && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+
+/** Link that opens the app on this reset token. Android: falls back to this page (?web=1) if the app isn't installed. */
+function appLink(token: string) {
+  const path = `reset-password?token=${token}`;
+  if (!isAndroid()) return `${APP_SCHEME}://${path}`;
+  const fallback = `${window.location.origin}/reset-password?token=${token}&web=1`;
+  return `intent://${path}#Intent;scheme=${APP_SCHEME};package=${APP_PACKAGE};S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
+}
 
 async function callFn<T>(name: string, data: Record<string, unknown>): Promise<T> {
   const res = await fetch(`/api/fn/${name}`, {
@@ -72,19 +88,31 @@ function PasswordField({
 }
 
 function ResetPassword() {
-  const token = useSearchParams().get('token') ?? '';
+  const params = useSearchParams();
+  const token = params.get('token') ?? '';
+  const inBrowser = params.get('web') === '1';
   const [phase, setPhase] = useState<Phase>('checking');
+  const [checkInBrowser, setCheckInBrowser] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<{ password?: string | null; confirm?: string | null; form?: string | null }>({});
   const [busy, setBusy] = useState(false);
 
+  // On a phone, open the app straight away.
+  useEffect(() => {
+    if (inBrowser || checkInBrowser || !isPhone() || !/^[a-f0-9]{64}$/.test(token)) return;
+    setPhase('app');
+    window.location.href = appLink(token);
+  }, [token, inBrowser, checkInBrowser]);
+
   useEffect(() => {
     if (!/^[a-f0-9]{64}$/.test(token)) {
       setPhase('expired');
       return;
     }
+    if (isPhone() && !inBrowser && !checkInBrowser) return;
+    setPhase('checking');
     callFn<{ status: 'ok' | 'expired'; email?: string | null }>('checkResetToken', { resetToken: token })
       .then((r) => {
         setEmail(r.email ?? null);
@@ -94,7 +122,7 @@ function ResetPassword() {
         setErrors({ form: (e as Error).message });
         setPhase('form');
       });
-  }, [token]);
+  }, [token, inBrowser, checkInBrowser]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +156,27 @@ function ResetPassword() {
         <img src="/reset/header.jpg" alt="KD Ascend" className="block h-[200px] w-full object-cover object-top" />
 
         <section className="-mt-6 flex flex-1 flex-col rounded-t-[24px] bg-white px-6 pt-8 pb-8">
-          {phase === 'checking' ? (
+          {phase === 'app' ? (
+            <div className="flex flex-1 flex-col items-center py-8 text-center">
+              <h1 className="text-[24px] leading-8 font-semibold text-ink">Reset Your Password</h1>
+              <p className="mt-2 text-[15px] leading-6 text-[#5E5E5E]">
+                Opening the KD Ascend app so you can create your new password. If it doesn’t open, tap the button below.
+              </p>
+              <a
+                href={appLink(token)}
+                className="mt-8 flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#FF8241] text-[17px] font-semibold text-white transition hover:bg-[#ff7433]"
+              >
+                Open KD Ascend App
+              </a>
+              <button
+                type="button"
+                onClick={() => setCheckInBrowser(true)}
+                className="mt-5 text-[14px] text-[#5E5E5E] underline underline-offset-2"
+              >
+                App not installed? Reset in the browser instead
+              </button>
+            </div>
+          ) : phase === 'checking' ? (
             <div className="grid flex-1 place-items-center py-16 text-[#5E5E5E]">
               <Loader2 className="size-7 animate-spin text-[#FF8241]" />
             </div>

@@ -13,7 +13,7 @@ function Footer({ busy, error, onClose }: { busy: boolean; error: string | null;
   return (
     <>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <div className="mt-2 flex justify-end gap-3">
+      <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" size="lg" onClick={onClose}>
           Cancel
         </Button>
@@ -59,8 +59,8 @@ export function EditContactModal({ user, open, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} className="max-w-[600px]">
       <ModalClose onClose={onClose} />
-      <form onSubmit={save} className="flex flex-col gap-5 p-8">
-        <h2 className="text-[22.5px] font-bold">Edit Contact Information</h2>
+      <form onSubmit={save} className="flex flex-col gap-5 p-5 sm:p-8">
+        <h2 className="pr-10 text-[20px] font-bold sm:text-[22.5px]">Edit Contact Information</h2>
         <Field label="Full Name" required>
           <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </Field>
@@ -115,8 +115,8 @@ export function EditPersonalModal({ user, open, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} className="max-w-[600px]">
       <ModalClose onClose={onClose} />
-      <form onSubmit={save} className="flex flex-col gap-5 p-8">
-        <h2 className="text-[22.5px] font-bold">Edit Personal Information</h2>
+      <form onSubmit={save} className="flex flex-col gap-5 p-5 sm:p-8">
+        <h2 className="pr-10 text-[20px] font-bold sm:text-[22.5px]">Edit Personal Information</h2>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="NRIC">
             <TextInput value={nric} onChange={(e) => setNric(e.target.value)} maxLength={9} />

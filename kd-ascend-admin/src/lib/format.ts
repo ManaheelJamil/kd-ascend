@@ -53,6 +53,11 @@ export function shortId(uid: string): string {
   return uid.slice(0, 6).toUpperCase();
 }
 
+/** User ID shown in the dashboard: KD01U, KD02U … KD100U ("KD…U" until the number is assigned). */
+export function userCode(u: Pick<UserDoc, 'userNo'>): string {
+  return u.userNo ? `KD${String(u.userNo).padStart(2, '0')}U` : 'KD…U';
+}
+
 /** Same rules as the mobile app (src/utils/validation.ts): returns "+6591234567" or null. */
 export function toE164(raw: string): string | null {
   const trimmed = raw.trim();

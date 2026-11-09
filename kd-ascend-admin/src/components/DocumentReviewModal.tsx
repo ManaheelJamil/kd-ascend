@@ -62,9 +62,9 @@ export default function DocumentReviewModal({
 
   return (
     <Modal open onClose={onClose} className="max-w-[959px] overflow-hidden">
-      <div className="flex items-start justify-between border-b border-field px-6 py-5">
+      <div className="flex items-start justify-between gap-3 border-b border-field px-4 py-4 sm:px-6 sm:py-5">
         <div className="min-w-0">
-          <h2 className="truncate text-xl font-semibold text-[#1e293b]">{document.label}</h2>
+          <h2 className="truncate text-lg font-semibold text-[#1e293b] sm:text-xl">{document.label}</h2>
           <p className="truncate text-sm text-[#64748b]">
             {file.name}
             {file.size ? ` · ${fileSize(file.size)}` : ''}
@@ -76,7 +76,7 @@ export default function DocumentReviewModal({
       </div>
 
       {mode === 'review' ? (
-        <div className="flex items-center gap-3 bg-brand/20 px-6 py-5">
+        <div className="flex items-center gap-3 bg-brand/20 px-4 py-4 sm:px-6 sm:py-5">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand text-white">
             <Info className="size-4" />
           </span>
@@ -87,12 +87,12 @@ export default function DocumentReviewModal({
         </div>
       ) : null}
 
-      <div className="grid min-h-[420px] place-items-center bg-[#f8fafc] p-6">
+      <div className="grid min-h-[260px] place-items-center bg-[#f8fafc] p-3 sm:min-h-[420px] sm:p-6">
         {loading ? (
           <Spinner />
         ) : url ? (
           isPdf ? (
-            <iframe src={url} title={file.name} className="h-[65vh] w-full rounded-[10px] border border-field bg-white" />
+            <iframe src={url} title={file.name} className="h-[60vh] w-full rounded-[10px] sm:h-[65vh] border border-field bg-white" />
           ) : isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={file.name} className="max-h-[65vh] max-w-full rounded-[10px] border border-field bg-white object-contain" />
@@ -118,10 +118,10 @@ export default function DocumentReviewModal({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-field bg-page px-6 py-[14px]">
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-field bg-page px-4 py-3 sm:px-6 sm:py-[14px]">
         {error ? <p className="mr-auto text-sm text-danger">{error}</p> : null}
         {url ? (
-          <a href={url} target="_blank" rel="noreferrer" className="mr-auto inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink">
+          <a href={url} target="_blank" rel="noreferrer" className="mr-auto inline-flex w-full items-center gap-1.5 text-sm font-medium text-muted hover:text-ink sm:w-auto">
             Open in new tab <ExternalLink className="size-4" />
           </a>
         ) : null}

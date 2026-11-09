@@ -122,7 +122,7 @@ export default function CorporatesPage() {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <Card className="flex flex-wrap items-center gap-[14px] p-4 sm:p-[28px]">
-        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
+        <div className="relative min-w-0 basis-full sm:min-w-[220px] sm:flex-1 sm:basis-auto">
           <Search className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" />
           <input
             value={q}
@@ -131,8 +131,8 @@ export default function CorporatesPage() {
             className="h-[46px] w-full rounded-card border border-field pr-4 pl-[50px] text-base outline-none sm:h-[52px] sm:text-lg placeholder:text-[#0a0a0a]/50 focus:border-brand"
           />
         </div>
-        <div className="relative" ref={filterRef}>
-          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={() => setFilterOpen((o) => !o)}>
+        <div className="relative flex-1 sm:flex-none" ref={filterRef}>
+          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg w-full sm:w-auto" onClick={() => setFilterOpen((o) => !o)}>
             <Filter className="size-5" />
             {status === 'all' ? 'Filter' : corporateStatusLabel(status)}
           </Button>
@@ -156,7 +156,7 @@ export default function CorporatesPage() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={exportCsv}>
+        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg flex-1 sm:flex-none" onClick={exportCsv}>
           <Download className="size-5" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>
@@ -164,7 +164,7 @@ export default function CorporatesPage() {
 
       <Card className="overflow-hidden md:min-h-[400px]">
         {/* Phones: one card per corporate instead of the wide table. */}
-        <ul className="divide-y divide-line md:hidden">
+        <ul className="divide-y divide-line xl:hidden">
           {rows.length === 0 ? (
             <li className="px-4 py-12 text-center text-[15px] text-muted">
               {list.length === 0 ? 'No corporates yet.' : 'No corporates match your search.'}
@@ -191,7 +191,7 @@ export default function CorporatesPage() {
                       <Link
                         href={`/corporates/${c.id}/edit`}
                         aria-label="Edit"
-                        className="grid size-[31px] place-items-center rounded-control text-muted hover:bg-page hover:text-ink"
+                        className="grid size-9 place-items-center rounded-control text-muted hover:bg-page hover:text-ink sm:size-[31px]"
                       >
                         <SquarePen className="size-[18px]" />
                       </Link>
@@ -206,8 +206,8 @@ export default function CorporatesPage() {
           )}
         </ul>
 
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
+        <div className="hidden overflow-x-auto xl:block">
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
             <thead>
               <tr className="h-16 border-b border-line bg-page">
                 <th className="relative w-[32%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">

@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Ban, ChevronDown, ShieldCheck, SquarePen } from 'lucide-react';
+import { Ban, ChevronDown, ShieldCheck, SquarePen, Trash2 } from 'lucide-react';
 import { Avatar, IconButton, StatusBadge, cn } from './ui';
-import { BlacklistDialog, RemoveBlacklistDialog } from './UserDialogs';
-import { displayName, initial, isoDay, toDate } from '@/lib/format';
+import { BlacklistDialog, DeleteUserDialog, RemoveBlacklistDialog } from './UserDialogs';
+import { displayName, initial, isoDay, toDate, userCode } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 
 type SortKey = 'name' | 'email' | 'phone' | 'status' | 'joined';
@@ -52,6 +52,7 @@ export default function UsersTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'joined', dir: -1 });
   const [blacklistTarget, setBlacklistTarget] = useState<UserDoc | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<UserDoc | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserDoc | null>(null);
 
   const rows = useMemo(
     () =>
@@ -82,7 +83,7 @@ export default function UsersTable({
         href={`/users/${u.uid}`}
         aria-label="View / edit"
         title="View / edit"
-        className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
+        className="grid size-9 place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink sm:size-[31px]"
       >
         <SquarePen className="size-[18px]" />
       </Link>
@@ -95,13 +96,16 @@ export default function UsersTable({
           <Ban className="size-[18px]" />
         </IconButton>
       )}
+      <IconButton label="Delete user" onClick={() => setDeleteTarget(u)} className="text-danger">
+        <Trash2 className="size-[18px]" />
+      </IconButton>
     </div>
   );
 
   return (
     <>
       {/* Phones: one card per user instead of the wide table. */}
-      <ul className="divide-y divide-line md:hidden">
+      <ul className="divide-y divide-line xl:hidden">
         {rows.length === 0 ? (
           <li className="px-4 py-12 text-center text-[15px] text-muted">{emptyText}</li>
         ) : (
@@ -124,7 +128,9 @@ export default function UsersTable({
               <Avatar letter={initial(u)} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-[15px] font-semibold text-ink">{displayName(u)}</p>
+                  <p className="truncate text-[15px] font-semibold text-ink">
+                    {displayName(u)} <span className="text-[12.5px] font-normal text-muted">· {userCode(u)}</span>
+                  </p>
                   <StatusBadge status={u.status} />
                 </div>
                 <p className="truncate text-[13px] text-muted">{u.email}</p>
@@ -140,8 +146,8 @@ export default function UsersTable({
         )}
       </ul>
 
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
+      <div className="hidden overflow-x-auto xl:block">
+        <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
           <thead>
             <tr className="h-16 border-b border-line bg-page">
               {COLUMNS.map((col, i) => (
@@ -203,7 +209,10 @@ export default function UsersTable({
                     ) : null}
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar letter={initial(u)} />
-                      <span className="truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
+                        <span className="block text-[12.5px] text-muted">{userCode(u)}</span>
+                      </span>
                     </div>
                   </td>
                   <td className="truncate px-1.5 text-[13.5px] text-muted" title={u.email}>
@@ -226,6 +235,7 @@ export default function UsersTable({
 
       <BlacklistDialog user={blacklistTarget} open={!!blacklistTarget} onClose={() => setBlacklistTarget(null)} />
       <RemoveBlacklistDialog user={restoreTarget} open={!!restoreTarget} onClose={() => setRestoreTarget(null)} />
+      <DeleteUserDialog user={deleteTarget} open={!!deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }

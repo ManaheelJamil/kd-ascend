@@ -308,13 +308,13 @@ export function ContactFields({
 
 /** Figma: Cancel (outlined) + Save Changes (orange, shadow), equal halves. */
 export function SaveCancel({ onCancel, busy, height = 47 }: { onCancel: () => void; busy?: boolean; height?: 47 | 56 }) {
-  const h = height === 56 ? 'h-14' : 'h-[47px]';
+  const h = height === 56 ? 'h-12 sm:h-14' : 'h-12 sm:h-[47px]';
   return (
-    <div className={cn('grid grid-cols-2', height === 56 ? 'gap-[18px]' : 'gap-[19px]')}>
-      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-lg font-medium')}>
+    <div className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2', height === 56 ? 'sm:gap-[18px]' : 'sm:gap-[19px]')}>
+      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-base font-medium sm:text-lg')}>
         Cancel
       </Button>
-      <Button type="submit" loading={busy} className={cn(h, 'rounded-card text-lg font-medium')}>
+      <Button type="submit" loading={busy} className={cn(h, 'order-first rounded-card text-base font-medium sm:order-none sm:text-lg')}>
         Save Changes
       </Button>
     </div>
@@ -451,7 +451,7 @@ export function EditSectionModal({
 
   return (
     <Modal open={!!section} onClose={onClose} className="max-w-[519px] rounded-card border border-line">
-      <form onSubmit={save} className="flex flex-col gap-[27px] p-7">
+      <form onSubmit={save} className="flex flex-col gap-[27px] p-5 sm:p-7">
         <SectionHeading tone={section === 'company' ? 'navy' : 'orange'} title={section === 'company' ? 'Company Information' : 'Contact Person Details'} />
         {section === 'company' ? (
           <CompanyFields value={form} onChange={patch} errors={errors} layout="stack" />
@@ -484,22 +484,22 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
   };
   return (
     <Modal open onClose={onClose}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="flex items-start gap-[13px]">
-          <span className="grid size-[54px] shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger sm:size-[54px]">
             <Trash2 className="size-6" />
           </span>
           <div>
-            <h2 className="text-[22.5px] leading-8 font-bold text-ink">Delete Corporate</h2>
+            <h2 className="text-[20px] leading-7 font-bold text-ink sm:text-[22.5px] sm:leading-8">Delete Corporate</h2>
             <p className="text-[13.5px] text-muted">This can’t be undone</p>
           </div>
         </div>
-        <p className="mt-[17px] text-lg text-muted">
+        <p className="mt-[17px] text-base text-muted sm:text-lg">
           Delete <b className="font-semibold text-ink">{corporate.name}</b> and its contact details? Consider setting it to Inactive instead if you may need it later.
         </p>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
-          <Button variant="danger" size="lg" className="flex-1" loading={busy} onClick={run}>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+          <Button variant="danger" size="lg" className="w-full sm:w-auto sm:flex-1" loading={busy} onClick={run}>
             Delete Corporate
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">

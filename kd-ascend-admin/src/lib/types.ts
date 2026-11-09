@@ -43,6 +43,8 @@ export type Payout =
 
 export type UserDoc = {
   uid: string;
+  /** Sequential number behind the user ID (1 → KD01U). Set by the admin dashboard. */
+  userNo?: number;
   email: string;
   phone: string;
   phoneVerified: boolean;
@@ -51,6 +53,8 @@ export type UserDoc = {
   status: AccountStatus;
   profile?: PersonalInfo;
   identityDocument?: StoredFile | null;
+  /** From the app: Student Pass and / or Identity Card (IC), front and back. */
+  identityDocuments?: Partial<Record<'studentPass' | 'ic', { front: StoredFile; back: StoredFile }>>;
   /** Extra documents added by an admin. */
   documents?: StoredFile[];
   payout?: Payout;

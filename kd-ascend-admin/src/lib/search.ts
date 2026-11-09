@@ -1,4 +1,4 @@
-import { displayName } from './format';
+import { displayName, userCode } from './format';
 import type { UserDoc } from './types';
 
 const digits = (s: string) => s.replace(/\D/g, '');
@@ -14,7 +14,7 @@ export function userMatches(u: UserDoc, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
 
-  const text = [displayName(u), u.profile?.fullName, u.email, u.profile?.nric, u.uid, u.phone]
+  const text = [displayName(u), u.profile?.fullName, u.email, u.profile?.nric, u.uid, u.userNo ? userCode(u) : '', u.phone]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Copy, Plus, RefreshCw, Upload, User, X } from 'lucide-react';
-import { Button, Card, DateInput, ErrorNote, Field, Modal, Select, TextArea, TextInput, cn } from '@/components/ui';
+import { Button, Card, DateInput, ErrorNote, Field, Modal, ModalClose, Select, ShortText, TextArea, TextInput, cn } from '@/components/ui';
 import { createUser } from '@/lib/users';
 import { fileSize, generatePassword, isEmail, isNric, toE164 } from '@/lib/format';
 import { COUNTRIES, GENDERS, SINGAPORE_BANKS } from '@/lib/options';
@@ -57,15 +57,17 @@ function DocumentSlot({
         className="h-11 w-full rounded-control border border-field px-[18px] text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand"
       />
       {slot.file ? (
-        <div className="mt-[13px] flex items-center gap-[13px] rounded-control border border-dashed border-dash px-[29px] py-7">
-          <span className="grid size-[45px] place-items-center rounded-control bg-brand/10 text-brand">
+        <div className="mt-[13px] flex items-center gap-[13px] rounded-control border border-dashed border-dash px-4 py-5 sm:px-[29px] sm:py-7">
+          <span className="grid size-[45px] shrink-0 place-items-center rounded-control bg-brand/10 text-brand">
             <Upload className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15.8px] font-medium text-ink">{slot.file.name}</p>
+            <p className="text-[15.8px] font-medium text-ink">
+              <ShortText text={slot.file.name} />
+            </p>
             <p className="text-[13.5px] text-muted">{fileSize(slot.file.size)}</p>
           </div>
-          <button type="button" onClick={() => onChange({ ...slot, file: null })} aria-label="Remove file" className="text-ink hover:text-danger">
+          <button type="button" onClick={() => onChange({ ...slot, file: null })} aria-label="Remove file" className="shrink-0 text-ink hover:text-danger">
             <X className="size-5" />
           </button>
         </div>
@@ -216,7 +218,7 @@ export default function AddUserPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 md:gap-[40px]">
+    <div className="flex min-w-0 flex-col gap-6 md:gap-[40px]">
       <div className="flex items-start gap-[18px]">
         <Link href="/users" aria-label="Back" className="mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-white sm:size-[54px] text-ink hover:bg-line">
           <ArrowLeft className="size-[22px]" />
@@ -227,8 +229,8 @@ export default function AddUserPage() {
         </div>
       </div>
 
-      <div className="grid gap-[27px] xl:grid-cols-[minmax(0,700px)_336px]">
-        <div className="flex flex-col gap-[27px]">
+      <div className="grid gap-[27px] 2xl:grid-cols-[minmax(0,700px)_336px]">
+        <div className="flex min-w-0 flex-col gap-[27px]">
           <Card className="flex items-center gap-[18px] p-5 sm:p-[28px]">
             <span className="grid size-[54px] shrink-0 place-items-center rounded-card bg-linear-to-r from-brand to-brand-light text-white">
               <User className="size-[27px]" strokeWidth={1.8} />
@@ -354,16 +356,16 @@ export default function AddUserPage() {
           {formError ? <ErrorNote>{formError}</ErrorNote> : null}
 
           <div className="flex items-center gap-[14px]">
-            <Button variant="ghost" className="h-[51px] px-7" onClick={() => router.push('/users')} disabled={saving}>
+            <Button variant="ghost" className="h-12 px-5 sm:h-[51px] sm:px-7" onClick={() => router.push('/users')} disabled={saving}>
               Cancel
             </Button>
-            <Button className="h-[51px] w-[162px] font-semibold" onClick={submit} loading={saving}>
+            <Button className="h-12 flex-1 font-semibold sm:h-[51px] sm:w-[162px] sm:flex-none" onClick={submit} loading={saving}>
               Create User
             </Button>
           </div>
         </div>
 
-        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-[27px] text-white xl:sticky xl:top-[135px]">
+        <aside className="h-fit rounded-card bg-linear-to-b from-navy to-navy-2 p-5 text-white sm:p-[27px] 2xl:sticky 2xl:top-[135px]">
           <h2 className="text-lg font-bold">Instructions</h2>
           <div className="mt-6 flex flex-col gap-[22px] text-[13.5px] leading-[18px]">
             <div>
@@ -388,23 +390,25 @@ export default function AddUserPage() {
         </aside>
       </div>
 
-      <Modal open={!!created} onClose={() => router.push(`/users/${created?.uid}`)}>
-        <div className="p-8">
+      <Modal open={!!created} onClose={() => router.push('/users')}>
+        {/* ✕ closes the popup and returns to the Users list. */}
+        <ModalClose onClose={() => router.push('/users')} />
+        <div className="p-5 sm:p-8">
           <span className="grid size-[54px] place-items-center rounded-full bg-[#dcfce7] text-success">
             <Check className="size-7" />
           </span>
           <h2 className="mt-4 text-[22.5px] font-bold">User created</h2>
           <p className="mt-1 text-[15px] text-muted">Share these login details with the user. The password is not shown again.</p>
-          <div className="mt-5 rounded-control bg-tile p-4 font-mono text-[14.5px] leading-7">
+          <div className="mt-5 rounded-control bg-tile p-4 font-mono text-[13.5px] leading-7 break-all sm:text-[14.5px]">
             <div>Email: {created?.email}</div>
             <div>Password: {created?.password}</div>
           </div>
-          <div className="mt-6 flex gap-3">
-            <Button variant="outline" size="lg" onClick={copyDetails} className="flex-1">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button variant="outline" size="lg" onClick={copyDetails} className="w-full sm:w-auto sm:flex-1">
               {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
               {copied ? 'Copied' : 'Copy details'}
             </Button>
-            <Button size="lg" className="flex-1" onClick={() => router.push(`/users/${created?.uid}`)}>
+            <Button size="lg" className="w-full sm:w-auto sm:flex-1" onClick={() => router.push(`/users/${created?.uid}`)}>
               View user
             </Button>
           </div>

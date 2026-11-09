@@ -78,13 +78,13 @@ export default function CorporateForm() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="flex gap-3 sm:gap-[18px]">
-        <Link href="/corporates" className="flex-1 sm:flex-none">
-          <Button type="button" variant="outline" className="h-14 w-full rounded-card text-lg font-medium sm:w-40">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-[18px]">
+        <Link href="/corporates" className="w-full sm:w-auto">
+          <Button type="button" variant="outline" className="h-12 w-full rounded-card text-base font-medium sm:h-14 sm:w-40 sm:text-lg">
             Cancel
           </Button>
         </Link>
-        <Button type="submit" loading={busy} className="h-[55px] flex-1 rounded-card text-lg font-medium sm:w-[191px] sm:flex-none">
+        <Button type="submit" loading={busy} className="h-12 w-full rounded-card text-base font-medium sm:h-[55px] sm:w-[191px] sm:text-lg">
           Save Changes
         </Button>
       </div>
