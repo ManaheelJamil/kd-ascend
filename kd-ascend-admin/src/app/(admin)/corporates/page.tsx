@@ -5,11 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Building2, Check, ChevronDown, Download, Filter, Search, SquarePen, Trash2 } from 'lucide-react';
 import { Avatar, Button, Card, ErrorNote, FullPageSpinner, IconButton, PageTitle, cn } from '@/components/ui';
-import { CorporateStatusBadge, DeleteCorporateDialog } from '@/components/CorporateBits';
-import { CORPORATE_STATUSES, corporateStatusLabel, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
+import { DeleteCorporateDialog } from '@/components/CorporateBits';
+import {
+  CORPORATE_STATUSES,
+  assignCorporateNumbers,
+  corporateStatusLabel,
+  subscribeCorporates,
+  type Corporate,
+  type CorporateStatus,
+} from '@/lib/corporates';
 import { isoDay } from '@/lib/format';
 
-type SortKey = 'name' | 'contact' | 'status' | 'added';
+type SortKey = 'name' | 'contact' | 'email' | 'jobs' | 'status' | 'added';
 
 export default function CorporatesPage() {
   const router = useRouter();
@@ -44,6 +51,18 @@ export default function CorporatesPage() {
     [],
   );
 
+  // Corporate IDs (CRP-01 …) for corporates added before numbering existed.
+  const numbering = useRef(false);
+  useEffect(() => {
+    if (loading || numbering.current || !list.some((c) => !c.corporateNo)) return;
+    numbering.current = true;
+    assignCorporateNumbers(list)
+      .catch(() => undefined)
+      .finally(() => {
+        numbering.current = false;
+      });
+  }, [list, loading]);
+
   useEffect(() => {
     if (!filterOpen) return;
     const close = (e: MouseEvent) => !filterRef.current?.contains(e.target as Node) && setFilterOpen(false);
@@ -67,8 +86,12 @@ export default function CorporatesPage() {
       sort.key === 'name'
         ? c.name.toLowerCase()
         : sort.key === 'contact'
-          ? (c.contactPhone || '').toLowerCase()
-          : sort.key === 'status'
+          ? (c.contactName || '').toLowerCase()
+          : sort.key === 'email'
+            ? (c.contactEmail || '').toLowerCase()
+            : sort.key === 'jobs'
+              ? jobsPosted(c)
+              : sort.key === 'status'
             ? c.status
             : (c.createdAt?.toMillis?.() ?? Date.now());
     return filtered.sort((a, b) => (val(a) < val(b) ? -sort.dir : val(a) > val(b) ? sort.dir : 0));
@@ -110,7 +133,7 @@ export default function CorporatesPage() {
 
   return (
     <div className="flex flex-col gap-[27px]">
-      <PageTitle title="Corporates Management">
+      <PageTitle title="Corporates Management" subtitle="Manage corporate accounts and their job activity.">
         <Link href="/corporates/new">
           <Button className="h-[45px] rounded-card px-5">
             <Building2 className="size-[18px]" />
@@ -180,12 +203,12 @@ export default function CorporatesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
-                    <CorporateStatusBadge status={c.status} />
+                    <StatusDot status={c.status} />
                   </div>
                   {c.contactEmail ? <p className="truncate text-[13px] text-muted">{c.contactEmail}</p> : null}
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="truncate text-[12.5px] text-muted">
-                      {c.contactPhone || '—'} · {isoDay(c.createdAt)}
+                      {c.contactName || '—'} · {jobsPosted(c)} jobs posted
                     </p>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <Link
@@ -207,10 +230,10 @@ export default function CorporatesPage() {
         </ul>
 
         <div className="hidden overflow-x-auto xl:block">
-          <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
             <thead>
               <tr className="h-16 border-b border-line bg-page">
-                <th className="relative w-[32%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
+                <th className="relative w-[24%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
                   <input
                     type="checkbox"
                     aria-label="Select all"
@@ -223,15 +246,15 @@ export default function CorporatesPage() {
                     onClick={() => setSort((s) => ({ key: 'name', dir: s.key === 'name' ? (s.dir === 1 ? -1 : 1) : 1 }))}
                     className="inline-flex items-center gap-0.5 hover:text-ink"
                   >
-                    Corporate
+                    Corporate Name
                     <ChevronDown className={cn('size-5', sort.key === 'name' && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
                   </button>
                 </th>
-                <th className="w-[11%] px-[18px] text-[13.5px] font-semibold text-muted">Profile</th>
-                <SortHead k="contact" label="Contact" className="w-[15%]" />
-                <SortHead k="status" label="Status" className="w-[14%]" />
-                <SortHead k="added" label="Added Date" className="w-[14%]" />
-                <th className="w-[14%] px-[18px] pr-[18px] text-right text-[13.5px] font-semibold text-muted">Actions</th>
+                <SortHead k="contact" label="Contact Person" className="w-[17%]" />
+                <SortHead k="email" label="Email" className="w-[23%]" />
+                <SortHead k="jobs" label="Jobs Posted" className="w-[12%]" />
+                <SortHead k="status" label="Status" className="w-[11%]" />
+                <th className="w-[13%] px-[18px] text-right text-[13.5px] font-semibold text-muted">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -255,7 +278,7 @@ export default function CorporatesPage() {
                   <tr
                     key={c.id}
                     onClick={() => router.push(`/corporates/${c.id}`)}
-                    className="h-[69px] cursor-pointer border-b border-line last:border-b-0 hover:bg-page/70"
+                    className="h-[64px] cursor-pointer border-b border-line last:border-b-0 hover:bg-page/70"
                   >
                     <td className="relative px-[18px] pl-[51px]">
                       <input
@@ -273,31 +296,23 @@ export default function CorporatesPage() {
                         }
                         className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
                       />
-                      <p className="truncate text-[15.8px] font-medium text-ink">{c.name}</p>
-                      {c.contactEmail ? <p className="truncate text-[13.5px] text-muted">{c.contactEmail}</p> : null}
+                      <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
                     </td>
+                    <td className="truncate px-[18px] text-[14px] text-muted">{c.contactName || '—'}</td>
+                    <td className="truncate px-[18px] text-[14px] text-muted" title={c.contactEmail}>
+                      {c.contactEmail || '—'}
+                    </td>
+                    <td className="px-[18px] text-[14px] font-medium text-ink">{jobsPosted(c)}</td>
                     <td className="px-[18px]">
-                      <Avatar letter={(c.name || '?').charAt(0).toUpperCase()} />
+                      <StatusDot status={c.status} />
                     </td>
-                    <td className="truncate px-[18px] text-[13.5px] text-muted">{c.contactPhone || '—'}</td>
-                    <td className="px-[18px]">
-                      <CorporateStatusBadge status={c.status} />
-                    </td>
-                    <td className="px-[18px] text-[13.5px] text-muted">{isoDay(c.createdAt)}</td>
-                    <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
-                        <Link
-                          href={`/corporates/${c.id}/edit`}
-                          aria-label="Edit"
-                          title="Edit"
-                          className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
-                        >
-                          <SquarePen className="size-[18px]" />
-                        </Link>
-                        <IconButton label="Delete" onClick={() => setToDelete(c)} className="text-danger">
-                          <Trash2 className="size-[18px]" />
-                        </IconButton>
-                      </div>
+                    <td className="px-[18px] text-right" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/corporates/${c.id}`}
+                        className="inline-flex h-[31px] items-center rounded-control bg-brand/10 px-3.5 text-[13px] font-medium text-brand hover:bg-brand/15"
+                      >
+                        View Details
+                      </Link>
                     </td>
                   </tr>
                 ))
@@ -307,7 +322,33 @@ export default function CorporatesPage() {
         </div>
       </Card>
 
+      {rows.length ? (
+        <p className="text-[13px] text-muted">
+          Showing 1–{rows.length} of {rows.length} corporate{rows.length === 1 ? '' : 's'}
+        </p>
+      ) : null}
+
       <DeleteCorporateDialog corporate={toDelete} onClose={() => setToDelete(null)} />
     </div>
+  );
+}
+
+/** Jobs posted so far (active + completed). Filled in by the Jobs module. */
+const jobsPosted = (c: Corporate) => (c.activeJobs ?? 0) + (c.completedJobs ?? 0);
+
+const DOT: Record<CorporateStatus, string> = {
+  active: 'bg-success text-success',
+  pending: 'bg-brand text-brand',
+  inactive: 'bg-muted text-muted',
+};
+
+/** Figma "● Active": coloured dot + label. */
+function StatusDot({ status }: { status: CorporateStatus }) {
+  const [dot, text] = (DOT[status] ?? DOT.pending).split(' ');
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-[13.5px] font-medium whitespace-nowrap', text)}>
+      <span className={cn('size-2 rounded-full', dot)} />
+      {corporateStatusLabel(status)}
+    </span>
   );
 }
