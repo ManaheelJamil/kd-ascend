@@ -9,16 +9,19 @@ import { cn } from './ui';
 import Notifications from './Notifications';
 
 /**
- * Top search bar: searches the Pending Approvals list on the Users page (?q= in the URL).
- * The search box inside the Users page is separate and searches all users.
+ * Top search bar. On Corporates pages it searches corporates (/corporates?q=);
+ * everywhere else it searches the Pending Approvals list on the Users page (?q= in the URL).
  */
 export default function Header({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
   const { admin } = useAdminAuth();
   const pathname = usePathname();
   const params = useSearchParams();
-  const onUsers = pathname === '/users';
+  const corporates = pathname.startsWith('/corporates');
+  const target = corporates ? '/corporates' : '/users';
+  const onUsers = pathname === target; // on the page the search filters
   const urlQ = onUsers ? (params.get('q') ?? '') : '';
+  const label = corporates ? 'Search corporates' : 'Search pending approvals';
   const [q, setQ] = useState(urlQ);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -28,7 +31,7 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
     const sp = new URLSearchParams(onUsers ? params.toString() : '');
     if (value.trim()) sp.set('q', value.trim());
     else sp.delete('q');
-    const url = `/users${sp.toString() ? `?${sp}` : ''}`;
+    const url = `${target}${sp.toString() ? `?${sp}` : ''}`;
     if (replace) router.replace(url, { scroll: false });
     else router.push(url);
   };
@@ -63,8 +66,8 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
         <input
           value={q}
           onChange={(e) => change(e.target.value)}
-          placeholder="Search pending approvals..."
-          aria-label="Search pending approvals"
+          placeholder={`${label}...`}
+          aria-label={label}
           className="h-11 w-full rounded-control bg-search pr-10 pl-10 text-[15px] outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20 md:h-[65px] md:rounded-card md:pr-14 md:pl-[63px] md:text-lg"
         />
         {q ? (

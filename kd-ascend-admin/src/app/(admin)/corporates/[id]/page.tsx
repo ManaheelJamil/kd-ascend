@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { SquarePen, Trash2 } from 'lucide-react';
-import { Button, ErrorNote, FullPageSpinner, ShortText, cn } from '@/components/ui';
+import { Button, ErrorNote, FullPageSpinner, cn } from '@/components/ui';
 import { DeleteCorporateDialog } from '@/components/CorporateBits';
 import { BlacklistTab, CorporateTabs, OverviewTab, type CorporateTab } from '@/components/CorporateDetail';
 import {
@@ -27,6 +27,7 @@ export default function CorporateDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   useEffect(
     () =>
@@ -60,7 +61,8 @@ export default function CorporateDetailsPage() {
     return unsub;
   }, [needsNumber]);
 
-  if (loading) return <FullPageSpinner />;
+  // While deleting, the record vanishes before the delete finishes: keep a spinner, not "not found".
+  if (loading || deleted || (deleting && !corporate)) return <FullPageSpinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!corporate)
     return (
@@ -72,7 +74,6 @@ export default function CorporateDetailsPage() {
       </div>
     );
 
-  const blacklisted = Object.keys(corporate.blacklist ?? {}).length;
   const facts: { label: string; value: string; sub?: string }[] = [
     { label: 'Contact Person', value: corporate.contactName || '—', sub: corporate.industry || undefined },
     { label: 'Email', value: corporate.contactEmail || '—' },
@@ -107,8 +108,13 @@ export default function CorporateDetailsPage() {
             {facts.map((f) => (
               <div key={f.label} className="min-w-0">
                 <dt className="text-[11.5px] text-muted">{f.label}</dt>
-                <dd className={cn('mt-0.5 text-[13.5px] text-ink', f.label === 'Contact Person' && 'font-semibold')}>
-                  {f.label === 'Email' ? <span className="block break-all">{f.value}</span> : <ShortText text={f.value} />}
+                <dd
+                  className={cn(
+                    'mt-0.5 text-[13.5px] text-ink [overflow-wrap:anywhere]',
+                    f.label === 'Contact Person' && 'font-semibold',
+                  )}
+                >
+                  {f.value}
                 </dd>
                 {f.sub ? <dd className="text-[11px] text-muted">{f.sub}</dd> : null}
               </div>
@@ -123,7 +129,7 @@ export default function CorporateDetailsPage() {
           </Link>
         </div>
 
-        <CorporateTabs tab={tab} onChange={setTab} blacklisted={blacklisted} />
+        <CorporateTabs tab={tab} onChange={setTab} />
       </div>
 
       {tab === 'overview' ? <OverviewTab corporate={corporate} /> : <BlacklistTab corporate={corporate} />}
@@ -138,7 +144,10 @@ export default function CorporateDetailsPage() {
       <DeleteCorporateDialog
         corporate={deleting ? corporate : null}
         onClose={() => setDeleting(false)}
-        onDone={() => router.replace('/corporates')}
+        onDone={() => {
+          setDeleted(true);
+          router.replace('/corporates');
+        }}
       />
     </div>
   );
