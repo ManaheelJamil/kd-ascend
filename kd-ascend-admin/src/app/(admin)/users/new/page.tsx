@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Copy, Plus, RefreshCw, Upload, User, X } from 'lucide-react';
 import { Button, Card, DateInput, ErrorNote, Field, Modal, ModalClose, Select, ShortText, TextArea, TextInput, cn } from '@/components/ui';
-import { createUser } from '@/lib/users';
+import { createUser, type NewUserInput } from '@/lib/users';
 import { fileSize, generatePassword, isEmail, isNric, toE164 } from '@/lib/format';
 import { COUNTRIES, GENDERS, SINGAPORE_BANKS } from '@/lib/options';
 import { authErrorMessage } from '@/context/AdminAuth';
@@ -101,6 +101,75 @@ function DocumentSlot({
   );
 }
 
+type IdKind = 'studentPass' | 'ic';
+type IdSides = { front: File | null; back: File | null };
+const ID_DOCS: { key: IdKind; label: string }[] = [
+  { key: 'studentPass', label: 'Student Pass' },
+  { key: 'ic', label: 'Identity Card (IC)' },
+];
+
+/** One side (front / back) of an ID card: click or drop a PNG, JPG or PDF. */
+function SideUpload({ label, file, onChange }: { label: string; file: File | null; onChange: (f: File | null) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [drag, setDrag] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    if (!ACCEPT.split(',').includes(f.type)) return setError('Please choose a PNG, JPG or PDF file.');
+    if (f.size > MAX_BYTES) return setError('This file is larger than 5MB.');
+    setError(null);
+    onChange(f);
+  };
+  return (
+    <div className="min-w-0">
+      <p className="mb-2 text-[14.5px] font-semibold text-ink">
+        {label} <span className="text-danger">*</span>
+      </p>
+      {file ? (
+        <div className="flex items-center gap-3 rounded-control border border-success/50 bg-success/5 px-4 py-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-success/15 text-success">
+            <Check className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14.5px] font-medium text-ink" title={file.name}>
+              {file.name}
+            </p>
+            <p className="text-[12.5px] text-muted">{fileSize(file.size)}</p>
+          </div>
+          <button type="button" onClick={() => onChange(null)} aria-label={`Remove ${label}`} className="shrink-0 text-ink hover:text-danger">
+            <X className="size-5" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            pick(e.dataTransfer.files?.[0]);
+          }}
+          className={cn(
+            'flex h-[120px] w-full flex-col items-center justify-center rounded-control border border-dashed px-3 text-center transition',
+            drag ? 'border-brand bg-brand/5' : 'border-dash hover:bg-page',
+          )}
+        >
+          <Upload className="size-5 text-ink" strokeWidth={1.6} />
+          <span className="mt-2 text-[14.5px] font-medium text-ink">Upload {label.toLowerCase()}</span>
+          <span className="mt-0.5 text-[12.5px] text-muted">PNG, JPG or PDF (max. 5MB)</span>
+        </button>
+      )}
+      {error ? <p className="mt-1.5 text-[13px] text-danger">{error}</p> : null}
+      <input ref={input} type="file" accept={ACCEPT} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+    </div>
+  );
+}
+
 function Radio({ checked, label, onSelect }: { checked: boolean; label: string; onSelect: () => void }) {
   return (
     <button type="button" onClick={onSelect} className="inline-flex items-center gap-[11px] text-[15.8px] font-semibold text-ink">
@@ -132,7 +201,20 @@ export default function AddUserPage() {
     accountNumber: '',
   });
   const [method, setMethod] = useState<'paynow' | 'bank'>('paynow');
-  const [docs, setDocs] = useState<DocSlot[]>([{ id: 1, label: 'Student ID Card', file: null }]);
+  const [docs, setDocs] = useState<DocSlot[]>([]);
+  const [idKinds, setIdKinds] = useState<IdKind[]>([]);
+  const [idFiles, setIdFiles] = useState<Record<IdKind, IdSides>>({
+    studentPass: { front: null, back: null },
+    ic: { front: null, back: null },
+  });
+  const toggleKind = (k: IdKind) => {
+    setIdKinds((all) => (all.includes(k) ? all.filter((x) => x !== k) : ID_DOCS.map((d) => d.key).filter((x) => x === k || all.includes(x))));
+    setErrors((x) => ({ ...x, identity: undefined }));
+  };
+  const setSide = (k: IdKind, side: keyof IdSides, f: File | null) => {
+    setIdFiles((all) => ({ ...all, [k]: { ...all[k], [side]: f } }));
+    setErrors((x) => ({ ...x, identity: undefined }));
+  };
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -162,6 +244,11 @@ export default function AddUserPage() {
       if (!form.bankName) e.bankName = 'Please select the bank.';
       if (!form.accountHolderName.trim()) e.accountHolderName = 'Please enter the account holder name.';
       if (!/^\d{6,17}$/.test(form.accountNumber.replace(/[\s-]/g, ''))) e.accountNumber = 'Please enter a valid account number.';
+    }
+    if (!idKinds.length) e.identity = 'Please select Student Pass or Identity Card (IC) and upload the front and back.';
+    else {
+      const missing = ID_DOCS.find((d) => idKinds.includes(d.key) && (!idFiles[d.key].front || !idFiles[d.key].back));
+      if (missing) e.identity = `Please upload both the front and back of the ${missing.label}.`;
     }
     return e;
   };
@@ -197,6 +284,9 @@ export default function AddUserPage() {
         nationality: form.nationality,
         dateOfBirth: form.dateOfBirth,
         placeOfBirth: form.nationality,
+        identity: Object.fromEntries(
+          idKinds.map((k) => [k, { front: idFiles[k].front!, back: idFiles[k].back! }]),
+        ) as NewUserInput['identity'],
         documents: docs.filter((d) => d.file).map((d) => ({ label: d.label.trim() || d.file!.name, file: d.file! })),
         payout,
       });
@@ -295,6 +385,52 @@ export default function AddUserPage() {
           <Card className="p-5 sm:p-[28px]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-ink">Document Upload</h2>
+            </div>
+            <p className="mt-1 text-[14px] text-muted">
+              Choose Student Pass, Identity Card (IC) or both, then upload the front and back of each.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2" role="group" aria-label="Identity documents">
+              {ID_DOCS.map((d) => {
+                const on = idKinds.includes(d.key);
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleKind(d.key)}
+                    className={cn(
+                      'flex h-12 items-center gap-3 rounded-control border px-4 text-left text-[15px] font-semibold transition',
+                      on ? 'border-success bg-success/10 text-ink' : 'border-field text-ink hover:bg-page',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'grid size-5 shrink-0 place-items-center rounded-full border-2',
+                        on ? 'border-success bg-success text-white' : 'border-ink/40',
+                      )}
+                    >
+                      {on ? <Check className="size-3" strokeWidth={3} /> : null}
+                    </span>
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+            {ID_DOCS.filter((d) => idKinds.includes(d.key)).map((d) => (
+              <div key={d.key} className="mt-5 rounded-control border border-line p-4">
+                <p className="mb-3 text-[15.5px] font-bold text-ink">{d.label}</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SideUpload label="Front Side" file={idFiles[d.key].front} onChange={(f) => setSide(d.key, 'front', f)} />
+                  <SideUpload label="Back Side" file={idFiles[d.key].back} onChange={(f) => setSide(d.key, 'back', f)} />
+                </div>
+              </div>
+            ))}
+            {errors.identity ? <p className="mt-3 text-[13.5px] text-danger">{errors.identity}</p> : null}
+
+            <div className="mt-7 flex items-center justify-between gap-3 border-t border-line pt-5">
+              <p className="text-[14.5px] font-semibold text-ink">
+                Other Documents <span className="font-normal text-muted">(optional)</span>
+              </p>
               <Button
                 type="button"
                 variant="soft"
@@ -305,12 +441,12 @@ export default function AddUserPage() {
                 Add Document
               </Button>
             </div>
-            <div className="mt-[27px] flex flex-col gap-[26px]">
+            <div className={cn('flex flex-col gap-[26px]', docs.length > 0 && 'mt-5')}>
               {docs.map((slot) => (
                 <DocumentSlot
                   key={slot.id}
                   slot={slot}
-                  canRemove={docs.length > 1}
+                  canRemove
                   onChange={(next) => setDocs((all) => all.map((d) => (d.id === slot.id ? next : d)))}
                   onRemove={() => setDocs((all) => all.filter((d) => d.id !== slot.id))}
                 />

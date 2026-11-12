@@ -268,9 +268,14 @@ export type NewUserInput = {
   nationality: string;
   dateOfBirth: string;
   placeOfBirth: string;
+  /** Student Pass and/or Identity Card (IC), each with front and back (same as the app). */
+  identity: Partial<Record<'studentPass' | 'ic', { front: File; back: File }>>;
+  /** Any other documents (optional). */
   documents: { label: string; file: File }[];
   payout: Payout;
 };
+
+const ID_LABEL = { studentPass: 'Student Pass', ic: 'Identity Card (IC)' } as const;
 
 /**
  * Creates the login (Firebase Authentication) and the profile (Firestore) for a new user.
@@ -282,9 +287,19 @@ export async function createUser(input: NewUserInput): Promise<string> {
   const uid = cred.user.uid;
   await signOut(secondaryAuth);
 
-  const documents: StoredFile[] = [];
-  for (const d of input.documents) documents.push(await uploadFile(uid, 'documents', d.file, d.label));
-  const [identityDocument, ...extra] = documents;
+  const identityDocuments: NonNullable<UserDoc['identityDocuments']> = {};
+  for (const kind of ['studentPass', 'ic'] as const) {
+    const sides = input.identity[kind];
+    if (!sides) continue;
+    identityDocuments[kind] = {
+      front: await uploadFile(uid, 'identity', sides.front, `${ID_LABEL[kind]} — Front Side`),
+      back: await uploadFile(uid, 'identity', sides.back, `${ID_LABEL[kind]} — Back Side`),
+    };
+  }
+  const extra: StoredFile[] = [];
+  for (const d of input.documents) extra.push(await uploadFile(uid, 'documents', d.file, d.label));
+  // Older screens read one identityDocument: keep the first front side there.
+  const identityDocument = identityDocuments.studentPass?.front ?? identityDocuments.ic?.front ?? null;
 
   const profile: PersonalInfo = {
     fullName: input.fullName.trim(),
@@ -305,7 +320,8 @@ export async function createUser(input: NewUserInput): Promise<string> {
     onboardingStep: 'done',
     status: 'approved',
     profile,
-    identityDocument: identityDocument ?? null,
+    identityDocument,
+    identityDocuments,
     documents: extra,
     payout: input.payout,
     createdBy: 'admin',

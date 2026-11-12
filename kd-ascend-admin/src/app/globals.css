@@ -31,6 +31,9 @@ html,
 body {
   background: var(--color-page);
   color: var(--color-ink);
+  /* Plus Jakarta Sans joins "fi" / "fl" into one glyph ("Proﬁle"); keep every letter separate. */
+  font-variant-ligatures: no-common-ligatures no-discretionary-ligatures;
+  font-feature-settings: 'liga' 0, 'clig' 0;
 }
 
 /* Native date / select controls pick up the brand colour. */

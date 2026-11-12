@@ -271,9 +271,8 @@ export default function UserDetailsPage() {
               <div className="flex min-w-0 items-center gap-[17px]">
                 <Avatar letter={initial(user)} size={63} rounded="card" />
                 <div className="min-w-0">
-                  <h2 className="text-[22px] font-bold text-ink sm:text-[27px]">
-                    <ShortText text={displayName(user)} />
-                  </h2>
+                  {/* Full name always visible: long names wrap onto a second line. */}
+                  <h2 className="text-[20px] leading-7 font-bold break-words text-ink sm:text-[27px] sm:leading-9">{displayName(user)}</h2>
                   <StatusBadge status={user.status} className="mt-1" />
                 </div>
               </div>
