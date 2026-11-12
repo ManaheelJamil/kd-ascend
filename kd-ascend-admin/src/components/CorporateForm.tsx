@@ -16,7 +16,7 @@ import {
 } from './CorporateBits';
 import { createCorporate, type CorporateInput } from '@/lib/corporates';
 
-/** Figma "Add Corporate" (536:430): both cards in edit mode, Cancel + Save Changes underneath. */
+/** Figma "Add Corporates" (77:6562): both cards in edit mode, Cancel + Save Changes underneath. */
 export default function CorporateForm() {
   const router = useRouter();
   const [form, setForm] = useState<CorporateInput>(emptyCorporate());
@@ -65,7 +65,7 @@ export default function CorporateForm() {
       <Card className="p-5 sm:p-[28px]">
         <SectionHeading tone="navy" title="Company Information" />
         <div className="mt-[27px]">
-          <CompanyFields value={form} onChange={patch} errors={errors} showIndustry />
+          <CompanyFields value={form} onChange={patch} errors={errors} />
         </div>
       </Card>
 
@@ -80,11 +80,11 @@ export default function CorporateForm() {
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-[18px]">
         <Link href="/corporates" className="w-full sm:w-auto">
-          <Button type="button" variant="outline" className="h-12 w-full rounded-card text-base font-medium sm:h-14 sm:w-40 sm:text-lg">
+          <Button type="button" variant="outline" className="h-12 w-full rounded-full text-base font-medium sm:w-[150px]">
             Cancel
           </Button>
         </Link>
-        <Button type="submit" loading={busy} className="h-12 w-full rounded-card text-base font-medium sm:h-[55px] sm:w-[191px] sm:text-lg">
+        <Button type="submit" loading={busy} className="h-12 w-full rounded-full text-base font-medium sm:w-[180px]">
           Save Changes
         </Button>
       </div>
