@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Building2, Check, ChevronDown, Download, Filter, Search, SquarePen, Trash2 } from 'lucide-react';
-import { Avatar, Button, Card, ErrorNote, FullPageSpinner, IconButton, PageTitle, cn } from '@/components/ui';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Building2, Check, ChevronDown, Download, Filter, Search } from 'lucide-react';
+import { Avatar, Button, Card, ErrorNote, FullPageSpinner, PageTitle, cn } from '@/components/ui';
 import { DeleteCorporateDialog } from '@/components/CorporateBits';
 import {
   CORPORATE_STATUSES,
   assignCorporateNumbers,
+  corporateCode,
   corporateStatusLabel,
   subscribeCorporates,
   type Corporate,
@@ -18,12 +19,14 @@ import { isoDay } from '@/lib/format';
 
 type SortKey = 'name' | 'contact' | 'email' | 'jobs' | 'status' | 'added';
 
-export default function CorporatesPage() {
+function CorporatesList() {
   const router = useRouter();
+  const urlQ = useSearchParams().get('q') ?? '';
   const [list, setList] = useState<Corporate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(urlQ);
+  useEffect(() => setQ(urlQ), [urlQ]);
   const [status, setStatus] = useState<'all' | CorporateStatus>('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'added', dir: -1 });
@@ -76,7 +79,7 @@ export default function CorporatesPage() {
       (c) =>
         (status === 'all' || c.status === status) &&
         (!needle ||
-          [c.name, c.industry, c.location, c.contactName, c.contactEmail, c.contactPhone]
+          [corporateCode(c), c.name, c.location, c.contactName, c.contactEmail, c.contactPhone]
             .filter(Boolean)
             .join(' ')
             .toLowerCase()
@@ -98,12 +101,16 @@ export default function CorporatesPage() {
   }, [list, q, status, sort]);
 
 
+  const emptyText = q.trim()
+    ? 'No corporates match your search.'
+    : `No ${corporateStatusLabel(status as CorporateStatus).toLowerCase()} corporates.`;
+
   const exportCsv = () => {
     const pick = selected.size ? rows.filter((r) => selected.has(r.id)) : rows;
     const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-    const head = ['Corporate', 'Industry', 'Location', 'Status', 'Contact Person', 'Contact Email', 'Contact Phone', 'Added'];
+    const head = ['Corporate ID', 'Corporate', 'Contact Person', 'Contact Email', 'Contact Phone', 'Location', 'Jobs Posted', 'Status', 'Added'];
     const lines = pick.map((c) =>
-      [c.name, c.industry, c.location, corporateStatusLabel(c.status), c.contactName, c.contactEmail, c.contactPhone, isoDay(c.createdAt)]
+      [corporateCode(c), c.name, c.contactName, c.contactEmail, c.contactPhone, c.location, String(jobsPosted(c)), corporateStatusLabel(c.status), isoDay(c.createdAt)]
         .map(esc)
         .join(','),
     );
@@ -189,7 +196,7 @@ export default function CorporatesPage() {
         <ul className="divide-y divide-line xl:hidden">
           {rows.length === 0 ? (
             <li className="px-4 py-12 text-center text-[15px] text-muted">
-              {list.length === 0 ? 'No corporates yet.' : 'No corporates match your search.'}
+              {list.length === 0 ? 'No corporates yet.' : emptyText}
             </li>
           ) : (
             rows.map((c) => (
@@ -209,18 +216,13 @@ export default function CorporatesPage() {
                     <p className="truncate text-[12.5px] text-muted">
                       {c.contactName || '—'} · {jobsPosted(c)} jobs posted
                     </p>
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Link
-                        href={`/corporates/${c.id}/edit`}
-                        aria-label="Edit"
-                        className="grid size-9 place-items-center rounded-control text-muted hover:bg-page hover:text-ink sm:size-[31px]"
-                      >
-                        <SquarePen className="size-[18px]" />
-                      </Link>
-                      <IconButton label="Delete" onClick={() => setToDelete(c)} className="text-danger">
-                        <Trash2 className="size-[18px]" />
-                      </IconButton>
-                    </div>
+                    <Link
+                      href={`/corporates/${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex h-8 shrink-0 items-center rounded-md bg-brand/10 px-3 text-[12.5px] font-semibold text-brand"
+                    >
+                      View Details
+                    </Link>
                   </div>
                 </div>
               </li>
@@ -261,7 +263,7 @@ export default function CorporatesPage() {
                         </Link>
                       </>
                     ) : (
-                      'No corporates match your search.'
+                      emptyText
                     )}
                   </td>
                 </tr>
@@ -327,5 +329,13 @@ function StatusDot({ status }: { status: CorporateStatus }) {
       <span className={cn('size-2 rounded-full', dot)} />
       {corporateStatusLabel(status)}
     </span>
+  );
+}
+
+export default function CorporatesPage() {
+  return (
+    <Suspense fallback={<FullPageSpinner />}>
+      <CorporatesList />
+    </Suspense>
   );
 }

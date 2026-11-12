@@ -4,6 +4,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDocs,
   onSnapshot,
   runTransaction,
   serverTimestamp,
@@ -99,9 +100,22 @@ export function subscribeCorporate(id: string, onData: (c: Corporate | null) => 
   );
 }
 
+/** Next free number from counters/corporates (never reused, so deleted corporates leave a gap). */
+async function nextCorporateNo(): Promise<number> {
+  return runTransaction(db, async (tx) => {
+    const counter = await tx.get(counterRef());
+    const next = ((counter.data()?.last as number | undefined) ?? 0) + 1;
+    tx.set(counterRef(), { last: next }, { merge: true });
+    return next;
+  });
+}
+
 export async function createCorporate(input: CorporateInput): Promise<string> {
+  // Number first, so the new corporate shows CRP-0n straight away (falls back to the list page's numbering).
+  const corporateNo = await nextCorporateNo().catch(() => undefined);
   const res = await addDoc(col, {
     ...clean(input),
+    ...(corporateNo ? { corporateNo } : {}),
     completedJobs: 0,
     activeJobs: 0,
     createdBy: adminId(),
@@ -109,6 +123,28 @@ export async function createCorporate(input: CorporateInput): Promise<string> {
     updatedAt: serverTimestamp(),
   });
   return res.id;
+}
+
+const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+
+/**
+ * Another corporate with the same name or contact email, if any (case-insensitive).
+ * `exceptId`: the corporate being edited.
+ */
+export async function findDuplicateCorporate(
+  input: Pick<CorporateInput, 'name' | 'contactEmail'>,
+  exceptId?: string,
+): Promise<{ field: 'name' | 'contactEmail'; corporate: Corporate } | null> {
+  const snap = await getDocs(col);
+  const name = norm(input.name);
+  const email = norm(input.contactEmail);
+  for (const d of snap.docs) {
+    if (d.id === exceptId) continue;
+    const c = { ...(d.data() as Omit<Corporate, 'id'>), id: d.id };
+    if (name && norm(c.name ?? '') === name) return { field: 'name', corporate: c };
+    if (email && norm(c.contactEmail ?? '') === email) return { field: 'contactEmail', corporate: c };
+  }
+  return null;
 }
 
 export const updateCorporate = (id: string, data: Partial<CorporateInput>) =>

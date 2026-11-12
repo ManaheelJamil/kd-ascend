@@ -15,7 +15,7 @@ import {
   validateContact,
   type CorporateErrors,
 } from './CorporateBits';
-import { createCorporate, updateCorporate, type Corporate, type CorporateInput } from '@/lib/corporates';
+import { createCorporate, findDuplicateCorporate, updateCorporate, type Corporate, type CorporateInput } from '@/lib/corporates';
 
 /**
  * Figma "Add Corporates" (77:6562): both cards in edit mode, Cancel + Save Changes underneath.
@@ -50,6 +50,17 @@ export default function CorporateForm({ corporate }: { corporate?: Corporate }) 
     setBusy(true);
     setError(null);
     try {
+      const dup = await findDuplicateCorporate(form, corporate?.id);
+      if (dup) {
+        const msg =
+          dup.field === 'name'
+            ? `A corporate called “${dup.corporate.name}” already exists.`
+            : `${dup.corporate.name} already uses this contact email.`;
+        setErrors({ [dup.field]: msg });
+        setError(msg);
+        setBusy(false);
+        return;
+      }
       if (corporate) {
         await updateCorporate(corporate.id, form);
         router.replace(`/corporates/${corporate.id}`);

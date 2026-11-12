@@ -127,7 +127,9 @@ export function validateContact(v: Pick<CorporateInput, 'contactName' | 'contact
   const e: CorporateErrors = {};
   if (!v.contactName.trim()) e.contactName = 'Please enter the contact person’s name.';
   if (!isEmail(v.contactEmail)) e.contactEmail = 'Please enter a valid email address.';
-  if (v.contactPhone.replace(/\D/g, '').length < 7) e.contactPhone = 'Please enter a valid phone number.';
+  const digits = v.contactPhone.replace(/\D/g, '');
+  if (!/^\+?[\d\s\-().]+$/.test(v.contactPhone.trim()) || digits.length < 7 || digits.length > 15)
+    e.contactPhone = 'Please enter a valid phone number (digits only, e.g. +65 6123 4567).';
   return e;
 }
 
@@ -199,7 +201,12 @@ export function CorpSelect({
         onChange={(e) => onChange(e.target.value)}
         className={cn(corpControl, 'appearance-none pr-12 font-normal', !value && 'text-[#0a0a0a]/50', invalid && 'border-danger')}
       >
-        <option value="">{placeholder}</option>
+        {/* Placeholder only while nothing is chosen, so it isn't listed twice (e.g. "Pending"). */}
+        {!value ? (
+          <option value="" disabled hidden>
+            {placeholder}
+          </option>
+        ) : null}
         {options.map((o) => (
           <option key={o} value={o} className="text-ink">
             {o}
@@ -296,7 +303,7 @@ export function ContactFields({
         <CorpInput
           icon={Phone}
           type="tel"
-          placeholder="+1 555-0110"
+          placeholder="+65 6123 4567"
           value={value.contactPhone}
           onChange={(e) => onChange({ contactPhone: e.target.value })}
           invalid={!!errors.contactPhone}

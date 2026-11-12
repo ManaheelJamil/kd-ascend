@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, CircleCheck, FileText, Plus, Search, ShieldBan, TrendingDown, TrendingUp, UserRound } from 'lucide-react';
-import { Button, Card, Modal, ModalClose, ShortText, TextArea, cn } from './ui';
+import { Check, CircleCheck, X, FileText, Plus, Search, ShieldBan, TrendingDown, TrendingUp, UserRound } from 'lucide-react';
+import { Button, Card, Modal, ShortText, TextArea, cn } from './ui';
 import { useUsersData } from '@/context/UsersData';
 import { addToBlacklist, removeFromBlacklist, type Corporate } from '@/lib/corporates';
 import { displayName, toDate, userCode } from '@/lib/format';
@@ -13,10 +13,10 @@ import type { UserDoc } from '@/lib/types';
 
 export type CorporateTab = 'overview' | 'blacklist';
 
-export function CorporateTabs({ tab, onChange, blacklisted }: { tab: CorporateTab; onChange: (t: CorporateTab) => void; blacklisted: number }) {
+export function CorporateTabs({ tab, onChange }: { tab: CorporateTab; onChange: (t: CorporateTab) => void; blacklisted?: number }) {
   const items: { key: CorporateTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
-    { key: 'blacklist', label: `Blacklist Users${blacklisted ? ` (${blacklisted})` : ''}` },
+    { key: 'blacklist', label: 'Blacklist Users' },
   ];
   return (
     <div role="tablist" aria-label="Corporate sections" className="flex gap-3 sm:gap-5">
@@ -166,10 +166,11 @@ export function OverviewTab({ corporate }: { corporate: Corporate }) {
         const t = (toDate(u.approvedAt) ?? toDate(u.createdAt))?.getTime();
         return t !== undefined && t >= from && t < to;
       }).length;
-    const current = inRange(now - span, now);
-    const previous = inRange(now - 2 * span, now - span);
-    if (!previous) return current ? 100 : null;
-    return ((current - previous) / previous) * 100;
+    // Growth of the total over the chosen period: users added in it vs. the total before it.
+    const added = inRange(now - span, now);
+    const before = eligible.length - added;
+    if (before <= 0) return null;
+    return (added / before) * 100;
   }, [eligible, days]);
 
   const active = corporate.activeJobs ?? 0;
@@ -208,7 +209,7 @@ export function OverviewTab({ corporate }: { corporate: Corporate }) {
           tone="bg-brand/10 text-brand"
           label="Total Users"
           value={eligible.length}
-          note={`vs. previous ${periodLabel.replace('last ', '')}`}
+          note={delta === null ? 'Approved app users' : `growth in the ${periodLabel}`}
           delta={delta}
         />
         <StatCard icon={FileText} tone="bg-[#3B6FD1]/10 text-[#3B6FD1]" label="Total Jobs" value={active + completed} note="Active + completed" />
@@ -397,6 +398,7 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
         open={adding}
         corporate={corporate}
         onClose={() => setAdding(false)}
+        onFailed={(m) => setDone({ title: 'Couldn’t Save', message: m, error: true })}
         onDone={(u) => {
           setAdding(false);
           setDone({
@@ -411,6 +413,7 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
         corporate={corporate}
         label={unblocking ? `${name(unblocking)} (${code(unblocking)})` : ''}
         onClose={() => setUnblocking(null)}
+        onFailed={(m) => setDone({ title: 'Couldn’t Save', message: m, error: true })}
         onDone={(label) => {
           setUnblocking(null);
           setDone({
@@ -432,11 +435,13 @@ function AddBlacklistModal({
   corporate,
   onClose,
   onDone,
+  onFailed,
 }: {
   open: boolean;
   corporate: Corporate;
   onClose: () => void;
   onDone: (u: UserDoc) => void;
+  onFailed: (message: string) => void;
 }) {
   const { users } = useUsersData();
   const [q, setQ] = useState('');
@@ -462,8 +467,9 @@ function AddBlacklistModal({
   const matches = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const blocked = corporate.blacklist ?? {};
+    // Only approved app users can see jobs, so only they can be blacklisted.
     return users
-      .filter((u) => !blocked[u.uid])
+      .filter((u) => u.status === 'approved' && !blocked[u.uid])
       .filter(
         (u) => !needle || [displayName(u), u.email, u.phone, userCode(u)].some((v) => (v ?? '').toLowerCase().includes(needle)),
       )
@@ -472,22 +478,15 @@ function AddBlacklistModal({
 
   const submit = async () => {
     if (!picked) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await addToBlacklist(corporate.id, picked.uid, reason || 'Restricted by admin');
-      const u = picked;
-      reset();
-      onDone(u);
-    } catch (e) {
-      setError((e as Error).message);
-      setBusy(false);
-    }
+    // Firestore shows the change on this page straight away; the server confirms in the background.
+    const u = picked;
+    addToBlacklist(corporate.id, u.uid, reason || 'Restricted by admin').catch((e) => onFailed((e as Error).message));
+    reset();
+    onDone(u);
   };
 
   return (
     <Modal open={open} onClose={close} className={confirm ? CONFIRM_BOX : 'max-w-[480px]'}>
-      {confirm ? null : <ModalClose onClose={close} />}
       {confirm && picked ? (
         <ConfirmBody
           title="Blacklist User?"
@@ -525,7 +524,7 @@ function AddBlacklistModal({
           <ul role="radiogroup" aria-label="Users" className="mt-2 max-h-[230px] overflow-y-auto">
             {matches.length === 0 ? (
               <li className="px-3 py-4 text-center text-[13.5px] text-muted">
-                {q.trim() ? 'No matching users.' : 'No users to add.'}
+                {q.trim() ? 'No matching approved users.' : 'No approved users to add.'}
               </li>
             ) : (
               matches.map((u) => {
@@ -595,27 +594,19 @@ function UnblockDialog({
   label,
   onClose,
   onDone,
+  onFailed,
 }: {
   row: Row | null;
   corporate: Corporate;
   label: string;
   onClose: () => void;
   onDone: (label: string) => void;
+  onFailed: (message: string) => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const go = async () => {
+  const go = () => {
     if (!row) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await removeFromBlacklist(corporate.id, row.uid);
-      onDone(label);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    removeFromBlacklist(corporate.id, row.uid).catch((e) => onFailed((e as Error).message));
+    onDone(label);
   };
   const [who, place] = label ? [label, `${corporate.name}?`] : ['', ''];
   return (
@@ -629,8 +620,8 @@ function UnblockDialog({
         note="The user will be able to view and apply for its jobs again."
         cancelLabel="Cancel"
         confirmLabel="Unblock User"
-        busy={busy}
-        error={error}
+        busy={false}
+        error={null}
         onCancel={onClose}
         onConfirm={go}
       />
@@ -640,7 +631,7 @@ function UnblockDialog({
 
 /* Figma "unblock" / "User Blacklisted Confirmation" and "Unblock Successfully" / "User Blacklisted Successfully". */
 
-type SuccessInfo = { title: string; message: string; note?: string };
+type SuccessInfo = { title: string; message: string; note?: string; error?: boolean };
 
 const CONFIRM_BOX = 'max-w-[444px] rounded-[10px]';
 
@@ -706,9 +697,9 @@ function SuccessModal({ info, onClose }: { info: SuccessInfo | null; onClose: ()
   return (
     <Modal open={!!info} onClose={onClose} className={CONFIRM_BOX}>
       <div className="flex flex-col items-center px-6 pt-9 pb-[34px] text-center sm:px-10">
-        <span className="grid size-[82px] place-items-center rounded-full bg-[#E3F5EC]" aria-hidden>
-          <span className="grid size-[54px] place-items-center rounded-full bg-[#0E9F6E] text-white">
-            <Check className="size-8" strokeWidth={3} />
+        <span className={cn('grid size-[82px] place-items-center rounded-full', info?.error ? 'bg-danger/10' : 'bg-[#E3F5EC]')} aria-hidden>
+          <span className={cn('grid size-[54px] place-items-center rounded-full text-white', info?.error ? 'bg-danger' : 'bg-[#0E9F6E]')}>
+            {info?.error ? <X className="size-8" strokeWidth={3} /> : <Check className="size-8" strokeWidth={3} />}
           </span>
         </span>
         <h2 className="mt-4 text-[22px] leading-8 font-semibold text-ink">{info?.title}</h2>
