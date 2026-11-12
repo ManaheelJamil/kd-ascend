@@ -69,8 +69,13 @@ export default function Notifications() {
     return onSnapshot(
       doc(db, 'admins', user.uid),
       (snap) => {
-        const d = snap.data() as { notificationsReadAt?: Timestamp; notificationsRead?: string[] } | undefined;
-        setRead({ readAt: d?.notificationsReadAt?.toMillis?.() ?? 0, readKeys: new Set(d?.notificationsRead ?? []) });
+        // 'estimate': right after "Mark all as read" the server time isn't back yet; without this the
+        // pending value reads as null and the red badge came back for a second.
+        const d = snap.data({ serverTimestamps: 'estimate' }) as
+          | { notificationsReadAt?: Timestamp; notificationsRead?: string[] }
+          | undefined;
+        const at = d?.notificationsReadAt?.toMillis?.() ?? 0;
+        setRead((prev) => ({ readAt: Math.max(at, prev.readAt), readKeys: new Set(d?.notificationsRead ?? []) }));
       },
       () => undefined,
     );
