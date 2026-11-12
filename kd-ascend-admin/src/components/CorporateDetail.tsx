@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Briefcase, CircleCheck, FileText, Plus, Search, ShieldBan, TrendingDown, TrendingUp, UserRound } from 'lucide-react';
+import { Check, CircleCheck, FileText, Plus, Search, ShieldBan, TrendingDown, TrendingUp, UserRound } from 'lucide-react';
 import { Button, Card, Modal, ModalClose, ShortText, TextArea, cn } from './ui';
 import { useUsersData } from '@/context/UsersData';
 import { addToBlacklist, removeFromBlacklist, type Corporate } from '@/lib/corporates';
@@ -267,7 +267,7 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
   const [unblocking, setUnblocking] = useState<Row | null>(null);
-  const [done, setDone] = useState<{ title: string; message: string } | null>(null);
+  const [done, setDone] = useState<SuccessInfo | null>(null);
 
   const rows: Row[] = useMemo(() => {
     const byUid = new Map(users.map((u) => [u.uid, u]));
@@ -401,7 +401,8 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
           setAdding(false);
           setDone({
             title: 'User Blacklisted Successfully',
-            message: `${displayName(u)} (${userCode(u)}) has been successfully blacklisted from ${corporate.name}. They can no longer view or apply for jobs posted by this corporate.`,
+            message: `${displayName(u)} (${userCode(u)}) has been successfully blacklisted from ${corporate.name}.`,
+            note: 'The user can no longer view or apply for jobs posted by this corporate.',
           });
         }}
       />
@@ -414,7 +415,8 @@ export function BlacklistTab({ corporate }: { corporate: Corporate }) {
           setUnblocking(null);
           setDone({
             title: 'User Unblocked Successfully',
-            message: `${label} can now view and apply for jobs posted by ${corporate.name} again.`,
+            message: `${label} has been removed from the blacklist for ${corporate.name}.`,
+            note: 'The user can now view and apply for jobs posted by this corporate again.',
           });
         }}
       />
@@ -484,32 +486,23 @@ function AddBlacklistModal({
   };
 
   return (
-    <Modal open={open} onClose={close} className="max-w-[480px]">
-      <ModalClose onClose={close} />
+    <Modal open={open} onClose={close} className={confirm ? CONFIRM_BOX : 'max-w-[480px]'}>
+      {confirm ? null : <ModalClose onClose={close} />}
       {confirm && picked ? (
-        <div className="flex flex-col items-center px-6 pt-9 pb-6 text-center sm:px-8">
-          <span className="grid size-14 place-items-center rounded-full bg-brand/10 text-brand">
-            <ShieldBan className="size-7" />
-          </span>
-          <h2 className="mt-4 text-[20px] font-bold text-ink">Blacklist User?</h2>
-          <p className="mt-2 text-[14.5px] text-muted">
-            Are you sure you want to blacklist{' '}
-            <b className="text-ink">
-              {displayName(picked)} ({userCode(picked)})
-            </b>
-            ?
-          </p>
-          <p className="mt-2 text-[13px] text-muted">This user will no longer be able to view or apply for jobs posted by this corporate.</p>
-          {error ? <p className="mt-3 text-[13.5px] text-danger">{error}</p> : null}
-          <div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
-            <Button variant="outline" className="h-11 w-full rounded-full sm:flex-1" onClick={() => setConfirm(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button className="h-11 w-full rounded-full sm:flex-1" onClick={submit} loading={busy}>
-              Blacklist User
-            </Button>
-          </div>
-        </div>
+        <ConfirmBody
+          title="Blacklist User?"
+          lead="Are you sure you want to blacklist"
+          who={`${displayName(picked)} (${userCode(picked)})`}
+          after="from viewing jobs posted by"
+          place={`${corporate.name}?`}
+          note="The user will no longer be able to view or apply for its jobs."
+          cancelLabel="Cancel"
+          confirmLabel="Blacklist User"
+          busy={busy}
+          error={error}
+          onCancel={() => setConfirm(false)}
+          onConfirm={submit}
+        />
       ) : (
         <div className="px-5 pt-6 pb-5 sm:px-7 sm:pt-7">
           <h2 className="pr-8 text-[20px] font-bold text-ink">Blacklist User</h2>
@@ -624,42 +617,108 @@ function UnblockDialog({
       setBusy(false);
     }
   };
+  const [who, place] = label ? [label, `${corporate.name}?`] : ['', ''];
   return (
-    <Modal open={!!row} onClose={onClose} className="max-w-[440px]">
-      <ModalClose onClose={onClose} />
-      <div className="flex flex-col items-center px-6 pt-9 pb-6 text-center sm:px-8">
-        <span className="grid size-14 place-items-center rounded-full bg-success/10 text-success">
-          <Briefcase className="size-7" />
-        </span>
-        <h2 className="mt-4 text-[20px] font-bold text-ink">Unblock User?</h2>
-        <p className="mt-2 text-[14.5px] text-muted">
-          {label} will be able to view and apply for jobs posted by {corporate.name} again.
-        </p>
-        {error ? <p className="mt-3 text-[13.5px] text-danger">{error}</p> : null}
-        <div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
-          <Button variant="outline" className="h-11 w-full sm:flex-1" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button className="h-11 w-full sm:flex-1" onClick={go} loading={busy}>
-            Yes, Unblock
-          </Button>
-        </div>
-      </div>
+    <Modal open={!!row} onClose={onClose} className={CONFIRM_BOX}>
+      <ConfirmBody
+        title="Unblock User?"
+        lead="Are you sure you want to remove"
+        who={who}
+        after="from the blacklist for"
+        place={place}
+        note="The user will be able to view and apply for its jobs again."
+        cancelLabel="Cancel"
+        confirmLabel="Unblock User"
+        busy={busy}
+        error={error}
+        onCancel={onClose}
+        onConfirm={go}
+      />
     </Modal>
   );
 }
 
-function SuccessModal({ info, onClose }: { info: { title: string; message: string } | null; onClose: () => void }) {
+/* Figma "unblock" / "User Blacklisted Confirmation" and "Unblock Successfully" / "User Blacklisted Successfully". */
+
+type SuccessInfo = { title: string; message: string; note?: string };
+
+const CONFIRM_BOX = 'max-w-[444px] rounded-[10px]';
+
+function ConfirmBody({
+  title,
+  lead,
+  who,
+  after,
+  place,
+  note,
+  cancelLabel,
+  confirmLabel,
+  busy,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  lead: string;
+  who: string;
+  after: string;
+  place: string;
+  note: string;
+  cancelLabel: string;
+  confirmLabel: string;
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
   return (
-    <Modal open={!!info} onClose={onClose} className="max-w-[440px]">
-      <ModalClose onClose={onClose} />
-      <div className="flex flex-col items-center px-6 pt-9 pb-6 text-center sm:px-8">
-        <span className="grid size-14 place-items-center rounded-full bg-success text-white">
-          <CircleCheck className="size-8" />
+    <div className="flex flex-col items-center px-6 pt-8 pb-[34px] text-center sm:px-10">
+      <span className="grid size-16 place-items-center rounded-full bg-[#F2F2F2] text-[22px] font-semibold text-[#3F3F3F]" aria-hidden>
+        ?
+      </span>
+      <h2 className="mt-3 text-[20px] leading-7 font-semibold text-ink">{title}</h2>
+      <p className="mt-3 text-[13px] leading-5 text-[#5E5E5E]">{lead}</p>
+      <p className="text-[13px] leading-5 font-medium text-ink">{who}</p>
+      <p className="mt-2 text-[12px] leading-[18px] text-[#5E5E5E]">
+        {after} {place}
+        <br />
+        {note}
+      </p>
+      {error ? <p className="mt-3 text-[13px] text-danger">{error}</p> : null}
+      <div className="mt-10 flex w-full flex-col-reverse justify-center gap-3 sm:flex-row sm:gap-[30px]">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="h-[50px] w-full rounded-full border border-[#E3E3E3] bg-white text-[16px] text-ink transition hover:bg-page disabled:opacity-60 sm:w-[144px]"
+        >
+          {cancelLabel}
+        </button>
+        <Button onClick={onConfirm} loading={busy} className="h-[50px] w-full rounded-full text-[16px] font-medium sm:w-[144px]">
+          {confirmLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SuccessModal({ info, onClose }: { info: SuccessInfo | null; onClose: () => void }) {
+  return (
+    <Modal open={!!info} onClose={onClose} className={CONFIRM_BOX}>
+      <div className="flex flex-col items-center px-6 pt-9 pb-[34px] text-center sm:px-10">
+        <span className="grid size-[82px] place-items-center rounded-full bg-[#E3F5EC]" aria-hidden>
+          <span className="grid size-[54px] place-items-center rounded-full bg-[#0E9F6E] text-white">
+            <Check className="size-8" strokeWidth={3} />
+          </span>
         </span>
-        <h2 className="mt-4 text-[20px] font-bold text-ink">{info?.title}</h2>
-        <p className="mt-2 text-[14.5px] text-muted">{info?.message}</p>
-        <Button className="mt-6 h-11 w-full sm:w-[160px]" onClick={onClose}>
+        <h2 className="mt-4 text-[22px] leading-8 font-semibold text-ink">{info?.title}</h2>
+        <p className="mt-2 max-w-[280px] text-[13.5px] leading-[22px] text-[#5E5E5E]">{info?.message}</p>
+        {info?.note ? (
+          <p className="mt-5 w-full max-w-[292px] rounded-[8px] bg-[#F7F7F8] px-5 py-3 text-[11.5px] leading-[18px] text-[#6B6B6B]">
+            {info.note}
+          </p>
+        ) : null}
+        <Button onClick={onClose} className="mt-7 h-10 w-[150px] rounded-full text-[16px] font-semibold">
           Done
         </Button>
       </div>
