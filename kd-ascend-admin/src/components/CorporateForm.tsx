@@ -10,16 +10,22 @@ import {
   ContactFields,
   SectionHeading,
   emptyCorporate,
+  toInput,
   validateCompany,
   validateContact,
   type CorporateErrors,
 } from './CorporateBits';
-import { createCorporate, type CorporateInput } from '@/lib/corporates';
+import { createCorporate, updateCorporate, type Corporate, type CorporateInput } from '@/lib/corporates';
 
-/** Figma "Add Corporates" (77:6562): both cards in edit mode, Cancel + Save Changes underneath. */
-export default function CorporateForm() {
+/**
+ * Figma "Add Corporates" (77:6562): both cards in edit mode, Cancel + Save Changes underneath.
+ * Pass `corporate` for Edit Corporate: same page, filled in with the saved values.
+ */
+export default function CorporateForm({ corporate }: { corporate?: Corporate }) {
   const router = useRouter();
-  const [form, setForm] = useState<CorporateInput>(emptyCorporate());
+  const editing = !!corporate;
+  const back = editing ? `/corporates/${corporate.id}` : '/corporates';
+  const [form, setForm] = useState<CorporateInput>(() => (corporate ? toInput(corporate) : emptyCorporate()));
   const [errors, setErrors] = useState<CorporateErrors>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +50,13 @@ export default function CorporateForm() {
     setBusy(true);
     setError(null);
     try {
-      const id = await createCorporate(form);
-      router.replace(`/corporates/${id}`);
+      if (corporate) {
+        await updateCorporate(corporate.id, form);
+        router.replace(`/corporates/${corporate.id}`);
+      } else {
+        const id = await createCorporate(form);
+        router.replace(`/corporates/${id}`);
+      }
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -55,10 +66,10 @@ export default function CorporateForm() {
   return (
     <form onSubmit={save} className="flex flex-col gap-[27px]">
       <div className="flex items-start gap-[18px]">
-        <BackButton onClick={() => router.push('/corporates')} />
+        <BackButton onClick={() => router.push(back)} />
         <div>
-          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">Add Corporate</h1>
-          <p className="mt-1.5 text-[15.8px] text-muted">Add a corporate partner account</p>
+          <h1 className="text-[22px] leading-7 sm:text-[27px] sm:leading-8 font-bold text-ink">{editing ? 'Edit Corporate' : 'Add Corporate'}</h1>
+          <p className="mt-1.5 text-[15.8px] text-muted">{editing ? 'Edit corporate partner account' : 'Add a corporate partner account'}</p>
         </div>
       </div>
 
@@ -79,7 +90,7 @@ export default function CorporateForm() {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-[18px]">
-        <Link href="/corporates" className="w-full sm:w-auto">
+        <Link href={back} className="w-full sm:w-auto">
           <Button type="button" variant="outline" className="h-12 w-full rounded-full text-base font-medium sm:w-[150px]">
             Cancel
           </Button>
