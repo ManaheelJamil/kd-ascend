@@ -207,8 +207,11 @@ export default function AddUserPage() {
     studentPass: { front: null, back: null },
     ic: { front: null, back: null },
   });
+  // One document only (same as the app): picking the other one clears the first one's files.
   const toggleKind = (k: IdKind) => {
-    setIdKinds((all) => (all.includes(k) ? all.filter((x) => x !== k) : ID_DOCS.map((d) => d.key).filter((x) => x === k || all.includes(x))));
+    if (idKinds[0] === k) return;
+    setIdKinds([k]);
+    setIdFiles({ studentPass: { front: null, back: null }, ic: { front: null, back: null } });
     setErrors((x) => ({ ...x, identity: undefined }));
   };
   const setSide = (k: IdKind, side: keyof IdSides, f: File | null) => {
@@ -387,16 +390,17 @@ export default function AddUserPage() {
               <h2 className="text-lg font-bold text-ink">Document Upload</h2>
             </div>
             <p className="mt-1 text-[14px] text-muted">
-              Choose Student Pass, Identity Card (IC) or both, then upload the front and back of each.
+              Choose Student Pass or Identity Card (IC), then upload its front and back.
             </p>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2" role="group" aria-label="Identity documents">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Identity document">
               {ID_DOCS.map((d) => {
                 const on = idKinds.includes(d.key);
                 return (
                   <button
                     key={d.key}
                     type="button"
-                    aria-pressed={on}
+                    role="radio"
+                    aria-checked={on}
                     onClick={() => toggleKind(d.key)}
                     className={cn(
                       'flex h-12 items-center gap-3 rounded-control border px-4 text-left text-[15px] font-semibold transition',
