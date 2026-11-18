@@ -268,6 +268,81 @@ export async function createUser(input: NewUserInput): Promise<string> {
   return uid;
 }
 
+export type UpdateUserInput = {
+  uid: string;
+  previousEmail: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  address: string;
+  nric: string;
+  gender: string;
+  nationality: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  documents: { label: string; file?: File; existing?: StoredFile }[];
+  payout: Payout;
+};
+
+async function patchUserAuth(uid: string, email?: string, password?: string) {
+  const admin = auth.currentUser;
+  if (!admin) throw new Error('Not signed in');
+  const body: { uid: string; email?: string; password?: string } = { uid };
+  const nextEmail = email?.trim().toLowerCase();
+  if (nextEmail) body.email = nextEmail;
+  if (password && password.length >= 8) body.password = password;
+  if (!body.email && !body.password) return;
+
+  const res = await fetch('/api/admin/users/update-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await admin.getIdToken()}` },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    const err = new Error(json.error || 'Could not update login credentials.');
+    if (res.status === 409) (err as { code?: string }).code = 'auth/email-already-in-use';
+    throw err;
+  }
+}
+
+/** Updates an existing user profile (Firestore) and login email/password when provided. */
+export async function updateUser(input: UpdateUserInput): Promise<void> {
+  const stored: StoredFile[] = [];
+  for (const d of input.documents) {
+    if (d.file) stored.push(await uploadFile(input.uid, 'documents', d.file, d.label));
+    else if (d.existing) stored.push({ ...d.existing, ...(d.label.trim() ? { label: d.label.trim() } : {}) });
+  }
+  const [identityDocument, ...extra] = stored;
+
+  const profile: PersonalInfo = {
+    fullName: input.fullName.trim(),
+    nric: input.nric.trim().toUpperCase(),
+    gender: input.gender,
+    nationality: input.nationality,
+    dateOfBirth: input.dateOfBirth,
+    placeOfBirth: input.placeOfBirth || input.nationality,
+    address: input.address.trim(),
+  };
+
+  const nextEmail = input.email.trim().toLowerCase();
+  const emailChanged = nextEmail !== input.previousEmail.trim().toLowerCase();
+  if (emailChanged || (input.password && input.password.length >= 8)) {
+    await patchUserAuth(input.uid, emailChanged ? nextEmail : undefined, input.password);
+  }
+
+  await updateDoc(userRef(input.uid), {
+    email: nextEmail,
+    phone: input.phone,
+    profile,
+    identityDocument: identityDocument ?? null,
+    documents: extra,
+    payout: input.payout,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 function emptyProfile(): PersonalInfo {
   return { fullName: '', nric: '', gender: '', nationality: '', dateOfBirth: '', placeOfBirth: '', address: '' };
 }

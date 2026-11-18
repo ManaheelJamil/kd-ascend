@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Ban, CircleCheck, CircleX } from 'lucide-react';
-import { Button, Modal, TextArea } from './ui';
+import { Button, Modal, TextArea, ui } from './ui';
 import { blacklistUser, rejectUser, removeFromBlacklist } from '@/lib/users';
 import { displayName } from '@/lib/format';
 import { RESUBMIT_FIELDS } from '@/lib/resubmit';
@@ -17,8 +17,8 @@ function Header({ tone, icon, title, subtitle }: { tone: 'red' | 'green'; icon: 
         {icon}
       </span>
       <div>
-        <h2 className="text-[22.5px] leading-8 font-bold text-ink">{title}</h2>
-        <p className="text-[13.5px] text-muted">{subtitle}</p>
+        <h2 className={ui.sectionTitle}>{title}</h2>
+        <p className={ui.sectionLead}>{subtitle}</p>
       </div>
     </div>
   );

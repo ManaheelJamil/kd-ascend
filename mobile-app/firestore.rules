@@ -117,6 +117,8 @@ service cloud.firestore {
     // Corporate partners: managed from the admin dashboard only.
     match /corporates/{corporateId} {
       allow read, write: if isAdmin();
+
+     
     }
 
     // Counter behind the sequential user IDs (KD01U, KD02U …), managed by the admin dashboard.

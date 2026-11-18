@@ -4,9 +4,9 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Ban, ChevronDown, ShieldCheck, SquarePen } from 'lucide-react';
-import { Avatar, IconButton, StatusBadge, cn } from './ui';
+import { IconButton, StatusBadge, cn, ui } from './ui';
 import { BlacklistDialog, RemoveBlacklistDialog } from './UserDialogs';
-import { displayName, initial, isoDay, toDate } from '@/lib/format';
+import { displayName, isoDay, toDate } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 
 type SortKey = 'name' | 'email' | 'phone' | 'status' | 'joined';
@@ -79,9 +79,9 @@ export default function UsersTable({
   const actions = (u: UserDoc) => (
     <div className="flex justify-end gap-1">
       <Link
-        href={`/users/${u.uid}`}
-        aria-label="View / edit"
-        title="View / edit"
+        href={`/users/${u.uid}/edit`}
+        aria-label="Edit user"
+        title="Edit user"
         className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
       >
         <SquarePen className="size-[18px]" />
@@ -121,7 +121,6 @@ export default function UsersTable({
                   className="mt-3 size-5 shrink-0 rounded border-[#d9d9d9]"
                 />
               ) : null}
-              <Avatar letter={initial(u)} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="truncate text-[15px] font-semibold text-ink">{displayName(u)}</p>
@@ -145,7 +144,7 @@ export default function UsersTable({
           <thead>
             <tr className="h-16 border-b border-line bg-page">
               {COLUMNS.map((col, i) => (
-                <th key={col.key} className={cn('relative px-[18px] text-[13.5px] font-semibold text-muted', col.className)}>
+                <th key={col.key} className={cn('relative px-[18px]', ui.tableHead, col.className)}>
                   {i === 0 && selectable ? (
                     <input
                       type="checkbox"
@@ -201,10 +200,7 @@ export default function UsersTable({
                         className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2 rounded border-[#d9d9d9]"
                       />
                     ) : null}
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar letter={initial(u)} />
-                      <span className="truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
-                    </div>
+                    <span className="block truncate text-[15.8px] font-medium text-ink">{displayName(u)}</span>
                   </td>
                   <td className="truncate px-1.5 text-[13.5px] text-muted" title={u.email}>
                     {u.email}
