@@ -29,7 +29,7 @@ function firestoreHint(e: Error): string {
     : e.message;
 }
 
-function PickerEmpty({ icon, title, detail }: { icon: ReactNode; title: string; detail?: string }) {
+export function PickerEmpty({ icon, title, detail }: { icon: ReactNode; title: string; detail?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       <span className="grid size-[52px] place-items-center rounded-full bg-white text-muted shadow-sm ring-1 ring-line">{icon}</span>

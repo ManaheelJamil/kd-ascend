@@ -23,7 +23,9 @@ import {
   StatusPicker,
 } from '@/components/CorporateBits';
 import { subscribeCorporateBlacklist } from '@/lib/corporateBlacklist';
-import { setCorporateStatus, subscribeCorporate, type Corporate, type CorporateStatus } from '@/lib/corporates';
+import { corporateStatusLabel, setCorporateStatus, subscribeCorporate, type Corporate, type CorporateStatus } from '@/lib/corporates';
+import { CorporateStatusConfirmDialog } from '@/components/JobDialogs';
+import { useToast } from '@/components/Toast';
 import { longDay, shortDay, shortId } from '@/lib/format';
 
 function SectionCard({ title, onEdit, children }: { title: string; onEdit?: () => void; children: React.ReactNode }) {
@@ -59,12 +61,14 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 export default function CorporateDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
   const [corporate, setCorporate] = useState<Corporate | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<'company' | 'contact' | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [statusConfirm, setStatusConfirm] = useState<CorporateStatus | null>(null);
   const [tab, setTab] = useState<'overview' | 'blacklist'>('overview');
   const [blacklistCount, setBlacklistCount] = useState(0);
 
@@ -119,13 +123,22 @@ export default function CorporateDetailsPage() {
       </PageShell>
     );
 
-  const changeStatus = async (s: CorporateStatus) => {
-    if (s === corporate.status) return;
+  const requestStatusChange = (next: CorporateStatus) => {
+    if (next === corporate.status) return;
+    setStatusConfirm(next);
+  };
+
+  const applyStatusChange = async () => {
+    if (!statusConfirm || statusConfirm === corporate.status) return;
     setStatusBusy(true);
     try {
-      await setCorporateStatus(corporate.id, s);
+      await setCorporateStatus(corporate.id, statusConfirm);
+      toast.success(`Corporate status updated to ${corporateStatusLabel(statusConfirm)}.`);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg);
+      toast.error(msg || 'Could not update corporate status.');
+      throw e;
     } finally {
       setStatusBusy(false);
     }
@@ -288,7 +301,7 @@ export default function CorporateDetailsPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <dt className="text-muted">Status</dt>
                 <dd>
-                  <StatusPicker value={corporate.status} onChange={changeStatus} busy={statusBusy} />
+                  <StatusPicker value={corporate.status} onChange={requestStatusChange} busy={statusBusy} />
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -306,6 +319,13 @@ export default function CorporateDetailsPage() {
         corporate={deleting ? corporate : null}
         onClose={() => setDeleting(false)}
         onDone={() => router.replace('/corporates')}
+      />
+      <CorporateStatusConfirmDialog
+        corporate={corporate}
+        nextStatus={statusConfirm}
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={applyStatusChange}
       />
     </PageShell>
   );

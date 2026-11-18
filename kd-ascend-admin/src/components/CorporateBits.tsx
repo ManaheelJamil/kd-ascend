@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, ChevronDown, Mail, MapPin, Phone, SquarePen, Tag, Trash2, Users } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 import { Button, Modal, cn, control, controlHeight, ui } from './ui';
 import {
   CORPORATE_STATUSES,
@@ -38,11 +39,28 @@ export function CorporateStatusBadge({ status, className }: { status: CorporateS
 }
 
 /** The "Active ▾" pill in the details header: changes the status straight away. */
-export function StatusPicker({ value, onChange, busy }: { value: CorporateStatus; onChange: (s: CorporateStatus) => void; busy?: boolean }) {
+export function StatusPicker({
+  value,
+  onChange,
+  busy,
+  className,
+}: {
+  value: CorporateStatus;
+  onChange: (s: CorporateStatus) => void;
+  busy?: boolean;
+  className?: string;
+}) {
   return (
-    <label className={cn('relative inline-flex h-[38px] items-center rounded-full pr-9 pl-4 text-[15.8px] font-medium', BADGE[value], busy && 'opacity-60')}>
+    <label
+      className={cn(
+        'relative inline-flex h-[34px] min-w-[7.25rem] shrink-0 items-center whitespace-nowrap rounded-full pr-8 pl-3.5 text-[13.5px] font-medium',
+        BADGE[value],
+        busy && 'opacity-60',
+        className,
+      )}
+    >
       <span>{corporateStatusLabel(value)}</span>
-      <ChevronDown className="pointer-events-none absolute right-3 size-4" />
+      <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
       <select
         aria-label="Corporate status"
         value={value}
@@ -463,6 +481,7 @@ export function EditSectionModal({
 }
 
 export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporate: Corporate | null; onClose: () => void; onDone?: () => void }) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!corporate) return null;
@@ -471,6 +490,7 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
     setError(null);
     try {
       await deleteCorporate(corporate.id);
+      toast.success(`${corporate.name} deleted.`);
       onDone?.();
       onClose();
     } catch (e) {

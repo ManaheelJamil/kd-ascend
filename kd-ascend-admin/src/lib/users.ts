@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
   onSnapshot,
@@ -13,7 +14,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, getSecondaryAuth, storage } from './firebase';
 import { firestoreFileUrl, isFirestoreFile, saveFileToFirestore } from './fileStore';
 import { resubmitLabels } from './resubmit';
-import type { Payout, PersonalInfo, StoredFile, UserDoc } from './types';
+import type { AccountStatus, Payout, PersonalInfo, StoredFile, UserDoc } from './types';
 
 const usersCol = collection(db, 'users');
 const userRef = (uid: string) => doc(db, 'users', uid);
@@ -56,6 +57,36 @@ export function subscribeUser(uid: string, onData: (user: UserDoc | null) => voi
     (snap) => onData(snap.exists() ? ({ ...(snap.data() as UserDoc), uid: snap.id }) : null),
     onError,
   );
+}
+
+const adminsCol = collection(db, 'admins');
+
+/** Emails listed on admin accounts — hide list actions for matching user rows. */
+export function subscribeAdminEmails(
+  onData: (emails: Set<string>) => void,
+  onError?: (e: Error) => void,
+): Unsubscribe {
+  return onSnapshot(
+    adminsCol,
+    (snap) => {
+      const emails = new Set<string>();
+      for (const d of snap.docs) {
+        const email = (d.data().email as string | undefined)?.trim().toLowerCase();
+        if (email) emails.add(email);
+      }
+      onData(emails);
+    },
+    (e) => onError?.(e as Error),
+  );
+}
+
+export function isAdminEmailUser(user: UserDoc, adminEmails: Set<string>): boolean {
+  const email = user.email?.trim().toLowerCase();
+  return !!email && adminEmails.has(email);
+}
+
+export async function deleteUser(uid: string): Promise<void> {
+  await deleteDoc(userRef(uid));
 }
 
 export const approveUser = async (uid: string) => {
@@ -107,6 +138,23 @@ export const blacklistUser = async (uid: string, reason: string, fields: string[
 };
 
 /** "They will be able to access the platform again" → back to an approved account. */
+/** Quick status change from the users table (reject/blacklist use a generic admin note). */
+export async function setUserAccountStatus(uid: string, status: AccountStatus): Promise<void> {
+  if (status === 'approved') {
+    await approveUser(uid);
+    return;
+  }
+  if (status === 'rejected') {
+    await rejectUser(uid, 'Status updated by admin.');
+    return;
+  }
+  if (status === 'blacklisted') {
+    await blacklistUser(uid, 'Status updated by admin.');
+    return;
+  }
+  await updateDoc(userRef(uid), { status, updatedAt: serverTimestamp() });
+}
+
 export const removeFromBlacklist = async (uid: string) => {
   await updateDoc(userRef(uid), {
     status: 'approved',

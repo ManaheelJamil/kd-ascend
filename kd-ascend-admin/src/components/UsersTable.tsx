@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Ban, ChevronDown, ShieldCheck, SquarePen } from 'lucide-react';
+import { Ban, ChevronDown, ShieldCheck, SquarePen, Trash2 } from 'lucide-react';
 import { IconButton, StatusBadge, cn, ui } from './ui';
-import { BlacklistDialog, RemoveBlacklistDialog } from './UserDialogs';
+import { isAdminEmailUser, subscribeAdminEmails } from '@/lib/users';
+import { BlacklistDialog, DeleteUserDialog, RemoveBlacklistDialog } from './UserDialogs';
 import { displayName, isoDay, toDate } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
 
@@ -52,6 +53,13 @@ export default function UsersTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'joined', dir: -1 });
   const [blacklistTarget, setBlacklistTarget] = useState<UserDoc | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<UserDoc | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserDoc | null>(null);
+  const [adminEmails, setAdminEmails] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const unsub = subscribeAdminEmails((emails) => setAdminEmails(emails));
+    return () => unsub();
+  }, []);
 
   const rows = useMemo(
     () =>
@@ -76,27 +84,35 @@ export default function UsersTable({
     onSelectedChange(next);
   };
 
-  const actions = (u: UserDoc) => (
-    <div className="flex justify-end gap-1">
-      <Link
-        href={`/users/${u.uid}/edit`}
-        aria-label="Edit user"
-        title="Edit user"
-        className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
-      >
-        <SquarePen className="size-[18px]" />
-      </Link>
-      {u.status === 'blacklisted' ? (
-        <IconButton label="Remove from blacklist" onClick={() => setRestoreTarget(u)} className="text-success">
-          <ShieldCheck className="size-[18px]" />
+  const protectedRow = (u: UserDoc) => isAdminEmailUser(u, adminEmails);
+
+  const actions = (u: UserDoc) => {
+    if (protectedRow(u)) return null;
+    return (
+      <div className="flex justify-end gap-1">
+        <Link
+          href={`/users/${u.uid}/edit`}
+          aria-label="Edit user"
+          title="Edit user"
+          className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
+        >
+          <SquarePen className="size-[18px]" />
+        </Link>
+        {u.status === 'blacklisted' ? (
+          <IconButton label="Remove from blacklist" onClick={() => setRestoreTarget(u)} className="text-success">
+            <ShieldCheck className="size-[18px]" />
+          </IconButton>
+        ) : (
+          <IconButton label="Blacklist user" onClick={() => setBlacklistTarget(u)} className="text-danger">
+            <Ban className="size-[18px]" />
+          </IconButton>
+        )}
+        <IconButton label="Delete user" onClick={() => setDeleteTarget(u)} className="text-danger">
+          <Trash2 className="size-[18px]" />
         </IconButton>
-      ) : (
-        <IconButton label="Blacklist user" onClick={() => setBlacklistTarget(u)} className="text-danger">
-          <Ban className="size-[18px]" />
-        </IconButton>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <>
@@ -211,7 +227,7 @@ export default function UsersTable({
                   </td>
                   <td className="px-[18px] text-[13.5px] text-muted">{isoDay(u.createdAt)}</td>
                   <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
-                    {actions(u)}
+                    {actions(u) ?? <span className="text-[13px] text-muted">—</span>}
                   </td>
                 </tr>
               ))
@@ -222,6 +238,7 @@ export default function UsersTable({
 
       <BlacklistDialog user={blacklistTarget} open={!!blacklistTarget} onClose={() => setBlacklistTarget(null)} />
       <RemoveBlacklistDialog user={restoreTarget} open={!!restoreTarget} onClose={() => setRestoreTarget(null)} />
+      <DeleteUserDialog user={deleteTarget} open={!!deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Ban, CircleCheck, CircleX } from 'lucide-react';
+import { Ban, CircleCheck, CircleX, Trash2 } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 import { Button, Modal, TextArea, ui } from './ui';
-import { blacklistUser, rejectUser, removeFromBlacklist } from '@/lib/users';
+import { blacklistUser, deleteUser, rejectUser, removeFromBlacklist } from '@/lib/users';
 import { displayName } from '@/lib/format';
 import { RESUBMIT_FIELDS } from '@/lib/resubmit';
 import type { UserDoc } from '@/lib/types';
@@ -55,13 +56,15 @@ function FieldPicker({ value, onChange }: { value: string[]; onChange: (v: strin
 }
 
 function useAction(onClose: () => void, onDone?: () => void) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown>, successMessage?: string) => {
     setBusy(true);
     setError(null);
     try {
       await fn();
+      if (successMessage) toast.success(successMessage);
       onDone?.();
       onClose();
     } catch (e) {
@@ -110,7 +113,9 @@ export function BlacklistDialog({ user, open, onClose, onDone }: DialogProps) {
             className="flex-1"
             loading={busy}
             disabled={!reason.trim()}
-            onClick={() => run(() => blacklistUser(user.uid, reason, fields))}
+            onClick={() =>
+              run(() => blacklistUser(user.uid, reason, fields), `${displayName(user)} blacklisted successfully.`)
+            }
           >
             Blacklist User
           </Button>
@@ -149,8 +154,48 @@ export function RemoveBlacklistDialog({ user, open, onClose, onDone, showReason 
         )}
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex gap-3">
-          <Button variant="success" size="lg" className="flex-1" loading={busy} onClick={() => run(() => removeFromBlacklist(user.uid))}>
+          <Button
+            variant="success"
+            size="lg"
+            className="flex-1"
+            loading={busy}
+            onClick={() =>
+              run(() => removeFromBlacklist(user.uid), `${displayName(user)} removed from blacklist.`)
+            }
+          >
             Remove from Blacklist
+          </Button>
+          <Button variant="outline" size="lg" onClick={onClose} className="font-medium">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** Permanently remove a user document (admin-only; not for admin-login emails). */
+export function DeleteUserDialog({ user, open, onClose, onDone }: DialogProps) {
+  const { busy, error, run } = useAction(onClose, onDone);
+  if (!user) return null;
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="p-5 sm:p-8">
+        <Header tone="red" icon={<Trash2 className="size-6" />} title="Delete user" subtitle="This can’t be undone" />
+        <p className="mt-[17px] text-lg text-muted">
+          Are you sure you want to delete <b className="font-semibold text-ink">{displayName(user)}</b> ({user.email})? Their
+          profile and documents will be removed from the platform.
+        </p>
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        <div className="mt-6 flex gap-3">
+          <Button
+            variant="danger"
+            size="lg"
+            className="flex-1"
+            loading={busy}
+            onClick={() => run(() => deleteUser(user.uid), `${displayName(user)} deleted.`)}
+          >
+            Delete user
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">
             Cancel
@@ -197,7 +242,7 @@ export function RejectDialog({ user, open, onClose, onDone }: DialogProps) {
             className="flex-1"
             loading={busy}
             disabled={!reason.trim()}
-            onClick={() => run(() => rejectUser(user.uid, reason, fields))}
+            onClick={() => run(() => rejectUser(user.uid, reason, fields), `${displayName(user)} rejected successfully.`)}
           >
             Reject User
           </Button>

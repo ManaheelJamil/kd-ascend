@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Building2, Check, ChevronDown, Download, Filter, Search, SquarePen, Trash2 } from 'lucide-react';
 import { Avatar, Button, Card, ErrorNote, IconButton, PageShell, PageTitle, Spinner, ToolbarSearch, cn, ui } from '@/components/ui';
-import { CorporateStatusBadge, DeleteCorporateDialog } from '@/components/CorporateBits';
-import { CORPORATE_STATUSES, corporateStatusLabel, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
+import { DeleteCorporateDialog, StatusPicker } from '@/components/CorporateBits';
+import { CorporateStatusConfirmDialog } from '@/components/JobDialogs';
+import { useToast } from '@/components/Toast';
+import { CORPORATE_STATUSES, corporateStatusLabel, setCorporateStatus, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
 import { isoDay } from '@/lib/format';
 
 type SortKey = 'name' | 'email' | 'contact' | 'status' | 'added';
 
 export default function CorporatesPage() {
   const router = useRouter();
+  const toast = useToast();
   const [list, setList] = useState<Corporate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,29 @@ export default function CorporatesPage() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'added', dir: -1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toDelete, setToDelete] = useState<Corporate | null>(null);
+  const [statusBusy, setStatusBusy] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{ corporate: Corporate; next: CorporateStatus } | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  const requestStatusChange = (corporate: Corporate, next: CorporateStatus) => {
+    if (next === corporate.status) return;
+    setStatusConfirm({ corporate, next });
+  };
+
+  const applyStatusChange = async () => {
+    if (!statusConfirm) return;
+    const { corporate, next } = statusConfirm;
+    setStatusBusy(corporate.id);
+    try {
+      await setCorporateStatus(corporate.id, next);
+      toast.success(`Corporate status updated to ${corporateStatusLabel(next)}.`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update corporate status.');
+      throw e;
+    } finally {
+      setStatusBusy(null);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeCorporates(
@@ -177,7 +202,9 @@ export default function CorporatesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
-                    <CorporateStatusBadge status={c.status} />
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
+                    </span>
                   </div>
                   {c.contactEmail ? <p className="truncate text-[13px] text-muted">{c.contactEmail}</p> : null}
                   <div className="mt-1 flex items-center justify-between gap-2">
@@ -276,8 +303,8 @@ export default function CorporatesPage() {
                       {c.contactEmail || '—'}
                     </td>
                     <td className="truncate px-1.5 text-[13.5px] text-muted">{c.contactPhone || '—'}</td>
-                    <td className="px-[18px]">
-                      <CorporateStatusBadge status={c.status} />
+                    <td className="min-w-[124px] px-[18px]" onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
                     </td>
                     <td className="px-[18px] text-[13.5px] text-muted">{isoDay(c.createdAt)}</td>
                     <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
@@ -306,6 +333,13 @@ export default function CorporatesPage() {
       </Card>
 
       <DeleteCorporateDialog corporate={toDelete} onClose={() => setToDelete(null)} />
+      <CorporateStatusConfirmDialog
+        corporate={statusConfirm?.corporate ?? null}
+        nextStatus={statusConfirm?.next ?? null}
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={applyStatusChange}
+      />
     </PageShell>
   );
 }

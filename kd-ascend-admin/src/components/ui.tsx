@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { AccountStatus } from '@/lib/types';
-import { STATUS_LABEL } from '@/lib/format';
+import { ACCOUNT_STATUSES, STATUS_LABEL } from '@/lib/format';
 
 // Teaches tailwind-merge the custom tokens from globals.css so later classes override earlier ones.
 const twMerge = extendTailwindMerge({
@@ -348,6 +348,48 @@ export function StatusBadge({ status, className }: { status: AccountStatus; clas
     >
       {STATUS_LABEL[status] ?? status}
     </span>
+  );
+}
+
+/** Inline user status control — same pill pattern as job/corporate list tables. */
+export function UserStatusPicker({
+  value,
+  onChange,
+  busy,
+  className,
+}: {
+  value: AccountStatus;
+  onChange: (s: AccountStatus) => void;
+  busy?: boolean;
+  className?: string;
+}) {
+  const minW = value === 'under_review' || value === 'blacklisted' ? 'min-w-[7.75rem]' : 'min-w-[7.25rem]';
+  return (
+    <label
+      className={cn(
+        'relative inline-flex h-[34px] shrink-0 items-center whitespace-nowrap rounded-full pr-8 pl-3.5 text-[13.5px] font-medium',
+        minW,
+        BADGE[value] ?? BADGE.incomplete,
+        busy && 'opacity-60',
+        className,
+      )}
+    >
+      <span>{STATUS_LABEL[value] ?? value}</span>
+      <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+      <select
+        aria-label="User status"
+        value={value}
+        disabled={busy}
+        onChange={(e) => onChange(e.target.value as AccountStatus)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {ACCOUNT_STATUSES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
