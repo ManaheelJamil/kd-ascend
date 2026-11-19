@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, ChevronDown, Mail, MapPin, Phone, SquarePen, Tag, Trash2, Users } from 'lucide-react';
-import { Button, Modal, cn } from './ui';
+import { useToast } from '@/components/Toast';
+import { Button, Modal, cn, control, controlHeight, ui } from './ui';
 import {
   CORPORATE_STATUSES,
   INDUSTRIES,
@@ -38,11 +39,28 @@ export function CorporateStatusBadge({ status, className }: { status: CorporateS
 }
 
 /** The "Active ▾" pill in the details header: changes the status straight away. */
-export function StatusPicker({ value, onChange, busy }: { value: CorporateStatus; onChange: (s: CorporateStatus) => void; busy?: boolean }) {
+export function StatusPicker({
+  value,
+  onChange,
+  busy,
+  className,
+}: {
+  value: CorporateStatus;
+  onChange: (s: CorporateStatus) => void;
+  busy?: boolean;
+  className?: string;
+}) {
   return (
-    <label className={cn('relative inline-flex h-[38px] items-center rounded-full pr-9 pl-4 text-[15.8px] font-medium', BADGE[value], busy && 'opacity-60')}>
+    <label
+      className={cn(
+        'relative inline-flex h-[34px] min-w-[7.25rem] shrink-0 items-center whitespace-nowrap rounded-full pr-8 pl-3.5 text-[13.5px] font-medium',
+        BADGE[value],
+        busy && 'opacity-60',
+        className,
+      )}
+    >
       <span>{corporateStatusLabel(value)}</span>
-      <ChevronDown className="pointer-events-none absolute right-3 size-4" />
+      <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
       <select
         aria-label="Corporate status"
         value={value}
@@ -74,7 +92,7 @@ export function SectionHeading({ tone, title, children }: { tone: 'navy' | 'oran
         >
           {tone === 'navy' ? <Building2 className="size-[22px]" strokeWidth={1.8} /> : <Users className="size-[22px]" strokeWidth={1.8} />}
         </span>
-        <h2 className="text-[20.3px] font-semibold text-ink">{title}</h2>
+        <h2 className={cn(ui.sectionTitle, 'font-semibold')}>{title}</h2>
       </div>
       {children}
     </div>
@@ -104,8 +122,8 @@ export function InfoTile({
         <Icon className="size-5" strokeWidth={1.8} />
       </span>
       <div className="min-w-0">
-        <p className="text-[15.8px] text-muted">{label}</p>
-        <p className="mt-0.5 text-lg font-medium break-words text-ink">{value || '—'}</p>
+        <p className={ui.fieldLabel}>{label}</p>
+        <p className={cn('mt-0.5 whitespace-normal wrap-anywhere', ui.body)}>{value || '—'}</p>
       </div>
     </div>
   );
@@ -127,9 +145,7 @@ export function validateContact(v: Pick<CorporateInput, 'contactName' | 'contact
   const e: CorporateErrors = {};
   if (!v.contactName.trim()) e.contactName = 'Please enter the contact person’s name.';
   if (!isEmail(v.contactEmail)) e.contactEmail = 'Please enter a valid email address.';
-  const digits = v.contactPhone.replace(/\D/g, '');
-  if (!/^\+?[\d\s\-().]+$/.test(v.contactPhone.trim()) || digits.length < 7 || digits.length > 15)
-    e.contactPhone = 'Please enter a valid phone number (digits only, e.g. +65 6123 4567).';
+  if (v.contactPhone.replace(/\D/g, '').length < 7) e.contactPhone = 'Please enter a valid phone number.';
   return e;
 }
 
@@ -137,10 +153,7 @@ const statusLabels = CORPORATE_STATUSES.map((s) => s.label);
 export const labelToStatus = (label: string): CorporateStatus =>
   CORPORATE_STATUSES.find((s) => s.label === label)?.value ?? 'pending';
 
-/* ---------- Form fields (Figma: label 15.8 Medium ink, 52px inputs, 17.5 radius, 18px text) ---------- */
-
-const corpControl =
-  'h-[52px] w-full rounded-card border border-field bg-white px-[18px] text-lg font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-[#0a0a0a]/50 focus:border-brand focus:ring-2 focus:ring-brand/15';
+/* ---------- Form fields (shared with ui.tsx TextInput) ---------- */
 
 export function CorpField({
   label,
@@ -157,7 +170,7 @@ export function CorpField({
 }) {
   return (
     <label className={cn('flex flex-col gap-3', className)}>
-      <span className="text-[15.8px] font-medium text-ink">
+      <span className={ui.fieldLabel}>
         {label}
         {required ? ' *' : ''}
       </span>
@@ -176,7 +189,7 @@ export function CorpInput({
   return (
     <div className="relative">
       {Icon ? <Icon className="pointer-events-none absolute top-1/2 left-[18px] size-[18px] -translate-y-1/2 text-muted" /> : null}
-      <input {...rest} className={cn(corpControl, Icon && 'pl-[45px]', invalid && 'border-danger', className)} />
+      <input {...rest} className={cn(control, controlHeight, Icon && 'pl-[45px]', invalid && 'border-danger', className)} />
     </div>
   );
 }
@@ -199,14 +212,9 @@ export function CorpSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(corpControl, 'appearance-none pr-12 font-normal', !value && 'text-[#0a0a0a]/50', invalid && 'border-danger')}
+        className={cn(control, controlHeight, 'appearance-none pr-12', !value && 'text-[#0a0a0a]/50', invalid && 'border-danger')}
       >
-        {/* Placeholder only while nothing is chosen, so it isn't listed twice (e.g. "Pending"). */}
-        {!value ? (
-          <option value="" disabled hidden>
-            {placeholder}
-          </option>
-        ) : null}
+        <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o} value={o} className="text-ink">
             {o}
@@ -237,7 +245,7 @@ export function CompanyFields({
 }) {
   const grid = layout === 'grid';
   return (
-    <div className={cn('grid gap-y-[18px]', grid && 'gap-x-5 md:grid-cols-2')}>
+    <div className={cn('grid gap-[27px]', grid && 'md:grid-cols-2')}>
       <CorpField label="Name" required error={errors.name}>
         <CorpInput placeholder="Tech Corp Inc." value={value.name} onChange={(e) => onChange({ name: e.target.value })} invalid={!!errors.name} />
       </CorpField>
@@ -280,7 +288,7 @@ export function ContactFields({
 }) {
   const grid = layout === 'grid';
   return (
-    <div className={cn('grid gap-y-[18px]', grid && 'gap-x-[26px] md:grid-cols-2')}>
+    <div className={cn('grid gap-[27px]', grid && 'md:grid-cols-2')}>
       <CorpField label="Contact Person Name" required error={errors.contactName} className={grid ? 'md:col-span-2' : undefined}>
         <CorpInput
           placeholder="John Smith"
@@ -303,7 +311,7 @@ export function ContactFields({
         <CorpInput
           icon={Phone}
           type="tel"
-          placeholder="+65 6123 4567"
+          placeholder="+1 555-0110"
           value={value.contactPhone}
           onChange={(e) => onChange({ contactPhone: e.target.value })}
           invalid={!!errors.contactPhone}
@@ -315,13 +323,13 @@ export function ContactFields({
 
 /** Figma: Cancel (outlined) + Save Changes (orange, shadow), equal halves. */
 export function SaveCancel({ onCancel, busy, height = 47 }: { onCancel: () => void; busy?: boolean; height?: 47 | 56 }) {
-  const h = height === 56 ? 'h-12 sm:h-14' : 'h-12 sm:h-[47px]';
+  const h = height === 56 ? 'h-14' : 'h-[47px]';
   return (
-    <div className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2', height === 56 ? 'sm:gap-[18px]' : 'sm:gap-[19px]')}>
-      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-base font-medium sm:text-lg')}>
+    <div className={cn('grid grid-cols-2', height === 56 ? 'gap-[18px]' : 'gap-[19px]')}>
+      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card font-semibold')}>
         Cancel
       </Button>
-      <Button type="submit" loading={busy} className={cn(h, 'order-first rounded-card text-base font-medium sm:order-none sm:text-lg')}>
+      <Button type="submit" loading={busy} className={cn(h, 'rounded-card text-lg font-medium')}>
         Save Changes
       </Button>
     </div>
@@ -458,7 +466,7 @@ export function EditSectionModal({
 
   return (
     <Modal open={!!section} onClose={onClose} className="max-w-[519px] rounded-card border border-line">
-      <form onSubmit={save} className="flex flex-col gap-[27px] p-5 sm:p-7">
+      <form onSubmit={save} className="flex flex-col gap-[27px] p-7">
         <SectionHeading tone={section === 'company' ? 'navy' : 'orange'} title={section === 'company' ? 'Company Information' : 'Contact Person Details'} />
         {section === 'company' ? (
           <CompanyFields value={form} onChange={patch} errors={errors} layout="stack" />
@@ -473,6 +481,7 @@ export function EditSectionModal({
 }
 
 export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporate: Corporate | null; onClose: () => void; onDone?: () => void }) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!corporate) return null;
@@ -481,6 +490,7 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
     setError(null);
     try {
       await deleteCorporate(corporate.id);
+      toast.success(`${corporate.name} deleted.`);
       onDone?.();
       onClose();
     } catch (e) {
@@ -491,22 +501,22 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
   };
   return (
     <Modal open onClose={onClose}>
-      <div className="p-5 sm:p-8">
+      <div className="p-8">
         <div className="flex items-start gap-[13px]">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger sm:size-[54px]">
+          <span className="grid size-[54px] shrink-0 place-items-center rounded-full bg-[#ffe2e2] text-danger">
             <Trash2 className="size-6" />
           </span>
           <div>
-            <h2 className="text-[20px] leading-7 font-bold text-ink sm:text-[22.5px] sm:leading-8">Delete Corporate</h2>
+            <h2 className="text-[22.5px] leading-8 font-bold text-ink">Delete Corporate</h2>
             <p className="text-[13.5px] text-muted">This can’t be undone</p>
           </div>
         </div>
-        <p className="mt-[17px] text-base text-muted sm:text-lg">
+        <p className="mt-[17px] text-lg text-muted">
           Delete <b className="font-semibold text-ink">{corporate.name}</b> and its contact details? Consider setting it to Inactive instead if you may need it later.
         </p>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-          <Button variant="danger" size="lg" className="w-full sm:w-auto sm:flex-1" loading={busy} onClick={run}>
+        <div className="mt-6 flex gap-3">
+          <Button variant="danger" size="lg" className="flex-1" loading={busy} onClick={run}>
             Delete Corporate
           </Button>
           <Button variant="outline" size="lg" onClick={onClose} className="font-medium">

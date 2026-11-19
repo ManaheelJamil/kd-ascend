@@ -3,25 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Menu, Search, User, X } from 'lucide-react';
+import { Bell, Menu, Search, User, X } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuth';
+import { useUsersData } from '@/context/UsersData';
 import { cn } from './ui';
-import Notifications from './Notifications';
 
 /**
- * Top search bar. On Corporates pages it searches corporates (/corporates?q=);
- * everywhere else it searches the Pending Approvals list on the Users page (?q= in the URL).
+ * Top search bar: searches the Pending Approvals list on the Users page (?q= in the URL).
+ * The search box inside the Users page is separate and searches all users.
  */
 export default function Header({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
   const { admin } = useAdminAuth();
+  const { counts } = useUsersData();
   const pathname = usePathname();
   const params = useSearchParams();
-  const corporates = pathname.startsWith('/corporates');
-  const target = corporates ? '/corporates' : '/users';
-  const onUsers = pathname === target; // on the page the search filters
+  const onUsers = pathname === '/users';
   const urlQ = onUsers ? (params.get('q') ?? '') : '';
-  const label = corporates ? 'Search corporates' : 'Search pending approvals';
   const [q, setQ] = useState(urlQ);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -31,7 +29,7 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
     const sp = new URLSearchParams(onUsers ? params.toString() : '');
     if (value.trim()) sp.set('q', value.trim());
     else sp.delete('q');
-    const url = `${target}${sp.toString() ? `?${sp}` : ''}`;
+    const url = `/users${sp.toString() ? `?${sp}` : ''}`;
     if (replace) router.replace(url, { scroll: false });
     else router.push(url);
   };
@@ -51,7 +49,7 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-[68px] items-center gap-2 border-b border-line bg-white/90 px-3 backdrop-blur sm:gap-4 sm:px-5 md:h-[108px] md:px-6 2xl:px-[45px]">
+    <header className="sticky top-0 z-30 flex h-[68px] items-center gap-2 border-b border-line bg-white/90 px-3 backdrop-blur sm:gap-4 sm:px-5 md:h-[108px] md:px-[45px]">
       <button
         type="button"
         onClick={onMenu}
@@ -66,9 +64,9 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
         <input
           value={q}
           onChange={(e) => change(e.target.value)}
-          placeholder={`${label}...`}
-          aria-label={label}
-          className="h-11 w-full rounded-control bg-search pr-10 pl-10 text-[15px] outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20 md:h-[65px] md:rounded-card md:pr-14 md:pl-[63px] md:text-lg"
+          placeholder="Search pending approvals..."
+          aria-label="Search pending approvals"
+          className="h-11 w-full rounded-control bg-search pr-10 pl-10 text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20 md:h-[52px] md:rounded-card md:pr-14 md:pl-[50px]"
         />
         {q ? (
           <button
@@ -87,7 +85,17 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
       </form>
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3 md:gap-[22px]">
-        <Notifications />
+        <Link
+          href="/users?status=under_review"
+          aria-label={`${counts.under_review} users waiting for approval`}
+          title={`${counts.under_review} waiting for approval`}
+          className="relative grid size-10 place-items-center rounded-card text-muted hover:bg-page md:size-[54px]"
+        >
+          <Bell className="size-[22px] md:size-[27px]" strokeWidth={1.6} />
+          {counts.under_review > 0 ? (
+            <span className="absolute top-2 right-2 size-[9px] rounded-full bg-brand ring-2 ring-white md:top-3 md:right-3 md:size-[11px]" />
+          ) : null}
+        </Link>
 
         <div className="flex items-center gap-[18px] md:border-l md:border-field md:pl-[22.5px]">
           <div className="hidden text-right xl:block">

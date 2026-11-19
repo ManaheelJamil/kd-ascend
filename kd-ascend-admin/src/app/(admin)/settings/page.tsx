@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, verifyBeforeUpdateEmail } from 'firebase/auth';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { CircleCheck, Eye, EyeOff, Pencil, User } from 'lucide-react';
-import { Button, Card, cn } from '@/components/ui';
+import { Button, Card, PageTitle, cn, ui } from '@/components/ui';
 import { CorpField, CorpInput } from '@/components/CorporateBits';
 import { authErrorMessage, useAdminAuth } from '@/context/AdminAuth';
 import { auth, db } from '@/lib/firebase';
 import { imageFileToDataUrl } from '@/lib/settings';
 
-type Errors = Partial<Record<'name' | 'oldPassword' | 'newPassword' | 'confirmPassword', string>>;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type Errors = Partial<Record<'name' | 'email' | 'oldPassword' | 'newPassword' | 'confirmPassword', string>>;
 
 function PasswordInput({
   value,
@@ -101,12 +103,19 @@ export default function SettingsPage() {
     }
   };
 
+  const currentEmail = (user?.email ?? '').toLowerCase();
+  const emailChanged = email.trim().toLowerCase() !== currentEmail;
   const passwordChanging = !!(newPassword || confirmPassword);
 
   const validate = (): Errors => {
     const errs: Errors = {};
     if (!name.trim()) errs.name = 'Name is required';
-    if (passwordChanging && !oldPassword) errs.oldPassword = 'Enter your current password';
+    if (!email.trim()) errs.email = 'Email is required';
+    else if (!EMAIL_RE.test(email.trim())) errs.email = 'Enter a valid email address';
+    if ((emailChanged || passwordChanging) && !oldPassword)
+      errs.oldPassword = emailChanged && !passwordChanging
+        ? 'Enter your current password to change your email'
+        : 'Enter your current password';
     if (passwordChanging) {
       if (newPassword.length < 8) errs.newPassword = 'Use at least 8 characters';
       else if (newPassword === oldPassword) errs.newPassword = 'New password must be different';
@@ -133,7 +142,7 @@ export default function SettingsPage() {
         done.push('Admin name updated.');
       }
 
-      if (passwordChanging) {
+      if (emailChanged || passwordChanging) {
         try {
           await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', oldPassword));
         } catch (err) {
@@ -145,8 +154,18 @@ export default function SettingsPage() {
           throw err;
         }
 
-        await updatePassword(user, newPassword);
-        done.push('Password changed.');
+        if (passwordChanging) {
+          await updatePassword(user, newPassword);
+          done.push('Password changed.');
+        }
+        if (emailChanged) {
+          const next = email.trim().toLowerCase();
+          await verifyBeforeUpdateEmail(user, next);
+          await updateDoc(doc(db, 'admins', user.uid), { pendingEmail: next, updatedAt: serverTimestamp() });
+          done.push(
+            `We sent a confirmation link to ${next}. Your login email changes once you open that link; until then keep using ${user.email}.`,
+          );
+        }
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -163,8 +182,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-[22.5px]" noValidate>
-      <h1 className="text-[22.5px] leading-8 font-bold text-ink">Setting</h1>
+    <form onSubmit={save} className={cn(ui.pageStack, 'max-w-4xl')} noValidate>
+      <PageTitle title="Settings" subtitle="Admin profile, email and password" />
 
       {/* Profile photo — also shown in the top-right corner of every page */}
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-[50px]">
@@ -189,7 +208,7 @@ export default function SettingsPage() {
               <Pencil className="size-[18px]" strokeWidth={2} />
             </button>
           </div>
-          <p className="text-[20.75px] leading-[23px] font-semibold text-ink">Profile Photo</p>
+          <p className={ui.sectionTitleSm}>Profile Photo</p>
         </div>
 
         <div className="flex w-full flex-col gap-3 sm:w-auto">
@@ -214,8 +233,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Admin details */}
-      <Card className="flex flex-col gap-[27px] rounded-[18px] p-5 sm:p-[28px]">
-        <h2 className="text-[20.25px] leading-8 font-bold text-ink">Admin Details</h2>
+      <Card pad="lg" className="flex flex-col gap-[27px]">
+        <h2 className={ui.sectionTitle}>Admin Details</h2>
         <div className="grid gap-[27px] md:grid-cols-2">
           <CorpField label="Name" required error={errors.name}>
             <CorpInput
@@ -230,24 +249,25 @@ export default function SettingsPage() {
               className="font-normal"
             />
           </CorpField>
-          {/* The login email can't be changed from the website. */}
-          <CorpField label="Email">
+          <CorpField label="Email" required error={errors.email}>
             <CorpInput
               type="email"
               value={email}
-              readOnly
-              disabled
-              aria-readonly="true"
-              title="The admin email can't be changed here"
-              className="cursor-not-allowed bg-page text-muted"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clear('email');
+              }}
+              placeholder="name@company.com"
+              autoComplete="email"
+              invalid={!!errors.email}
             />
           </CorpField>
         </div>
       </Card>
 
       {/* Password */}
-      <Card className="flex flex-col gap-[27px] rounded-[18px] p-5 sm:p-[28px]">
-        <h2 className="text-[20.25px] leading-8 font-bold text-ink">Password</h2>
+      <Card pad="lg" className="flex flex-col gap-[27px]">
+        <h2 className={ui.sectionTitle}>Password</h2>
         <CorpField label="Old Password" error={errors.oldPassword}>
           <PasswordInput
             value={oldPassword}

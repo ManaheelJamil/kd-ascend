@@ -25,15 +25,17 @@
   --radius-control: 13.5px;
 
   --shadow-brand: 0 4px 6px rgb(255 125 77 / 0.3), 0 10px 15px rgb(255 125 77 / 0.3);
+
+  /* Shared admin layout & type scale (keep in sync with ui.tsx helpers) */
+  --spacing-page: 27px;
+  --spacing-card: 22.5px;
+  --spacing-card-lg: 28px;
 }
 
 html,
 body {
   background: var(--color-page);
   color: var(--color-ink);
-  /* Plus Jakarta Sans joins "fi" / "fl" into one glyph ("Proﬁle"); keep every letter separate. */
-  font-variant-ligatures: no-common-ligatures no-discretionary-ligatures;
-  font-feature-settings: 'liga' 0, 'clig' 0;
 }
 
 /* Native date / select controls pick up the brand colour. */
@@ -51,26 +53,4 @@ input[type='date']::-webkit-calendar-picker-indicator {
   width: 100%;
   height: 100%;
   cursor: pointer;
-}
-
-/* Admin notification pop-ups */
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/*
- * Laptop screens: the dashboard was designed for wide (1440px+) screens, so on laptops it
- * showed correctly only at 80% browser zoom. Show it at 80% scale automatically, so 100% zoom
- * looks the same as 80% did. Only the signed-in admin pages (data-admin-shell), only
- * 1024–1679px wide; phones, tablets, big monitors and the login / reset pages are unchanged.
- */
-@media (min-width: 1024px) and (max-width: 1679.98px) {
-  html:has([data-admin-shell]) {
-    zoom: 0.8;
-  }
-  /* Zoom also shrinks 100vh, so full-height areas are scaled back up to fill the screen. */
-  html:has([data-admin-shell]) .min-h-screen {
-    min-height: 125vh;
-  }
 }

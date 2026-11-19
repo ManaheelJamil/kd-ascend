@@ -3,42 +3,39 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ErrorNote, FullPageSpinner } from '@/components/ui';
-import CorporateForm from '@/components/CorporateForm';
+import { CorporateForm } from '@/components/CorporateForm';
+import { ErrorNote, FullPageSpinner, PageShell, ui } from '@/components/ui';
 import { subscribeCorporate, type Corporate } from '@/lib/corporates';
 
-/** Edit Corporate: the same page as Add Corporate (Figma 77:6562), filled in with the saved values. */
 export default function EditCorporatePage() {
   const { id } = useParams<{ id: string }>();
   const [corporate, setCorporate] = useState<Corporate | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  // Read once: the form keeps the admin's typing even if the record changes meanwhile.
   useEffect(() => {
-    let first = true;
-    const unsub = subscribeCorporate(
+    if (!id) {
+      setCorporate(null);
+      return;
+    }
+    return subscribeCorporate(
       id,
-      (c) => {
-        if (!first) return;
-        first = false;
-        setCorporate(c);
-      },
+      (c) => setCorporate(c),
       (e) => setError(e.message),
     );
-    return unsub;
   }, [id]);
 
   if (error && corporate === undefined) return <ErrorNote>{error}</ErrorNote>;
   if (corporate === undefined) return <FullPageSpinner />;
-  if (corporate === null)
+  if (!corporate) {
     return (
-      <div className="py-20 text-center">
-        <p className="text-lg font-semibold">Corporate not found</p>
-        <Link href="/corporates" className="mt-3 inline-block text-brand underline">
+      <PageShell>
+        <h1 className={ui.pageHeading}>Corporate not found</h1>
+        <Link href="/corporates" className="mt-4 text-brand underline">
           Back to corporates
         </Link>
-      </div>
+      </PageShell>
     );
+  }
 
-  return <CorporateForm corporate={corporate} />;
+  return <CorporateForm mode="edit" corporate={corporate} />;
 }

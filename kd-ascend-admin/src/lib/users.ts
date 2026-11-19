@@ -1,7 +1,9 @@
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -13,7 +15,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, getSecondaryAuth, storage } from './firebase';
 import { firestoreFileUrl, isFirestoreFile, saveFileToFirestore } from './fileStore';
 import { resubmitLabels } from './resubmit';
-import type { Payout, PersonalInfo, StoredFile, UserDoc } from './types';
+import type { AccountStatus, Payout, PersonalInfo, StoredFile, UserDoc } from './types';
 
 const usersCol = collection(db, 'users');
 const userRef = (uid: string) => doc(db, 'users', uid);
@@ -40,28 +42,6 @@ function notify(uid: string, event: NotifyEvent, reason?: string) {
     .catch((e) => console.warn('Notification email not sent', e));
 }
 
-/**
- * Permanently deletes a user: login account, profile, uploaded files and pending codes.
- * Runs on the server (/api/admin/delete-user) because only it can remove the login account.
- */
-export async function deleteUser(uid: string): Promise<void> {
-  const current = auth.currentUser;
-  if (!current) throw new Error('Please sign in again.');
-  const token = await current.getIdToken();
-  let res: Response;
-  try {
-    res = await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ uid }),
-    });
-  } catch {
-    throw new Error('Network error. Check your connection and try again.');
-  }
-  const body = (await res.json().catch(() => null)) as { deleted?: boolean; error?: string } | null;
-  if (!res.ok || !body?.deleted) throw new Error(body?.error || 'Could not delete the user. Please try again.');
-}
-
 /** Live list of every user document. */
 export function subscribeUsers(onData: (users: UserDoc[]) => void, onError: (e: Error) => void): Unsubscribe {
   return onSnapshot(
@@ -78,6 +58,49 @@ export function subscribeUser(uid: string, onData: (user: UserDoc | null) => voi
     (snap) => onData(snap.exists() ? ({ ...(snap.data() as UserDoc), uid: snap.id }) : null),
     onError,
   );
+}
+
+const adminsCol = collection(db, 'admins');
+
+/** Emails listed on admin accounts — hide list actions for matching user rows. */
+export function subscribeAdminEmails(
+  onData: (emails: Set<string>) => void,
+  onError?: (e: Error) => void,
+): Unsubscribe {
+  return onSnapshot(
+    adminsCol,
+    (snap) => {
+      const emails = new Set<string>();
+      for (const d of snap.docs) {
+        const email = (d.data().email as string | undefined)?.trim().toLowerCase();
+        if (email) emails.add(email);
+      }
+      onData(emails);
+    },
+    (e) => onError?.(e as Error),
+  );
+}
+
+export function isAdminEmailUser(user: UserDoc, adminEmails: Set<string>): boolean {
+  const email = user.email?.trim().toLowerCase();
+  return !!email && adminEmails.has(email);
+}
+
+export function payoutMethodLabel(payout?: Payout | null): string {
+  if (!payout) return 'Bank Transfer';
+  return payout.method === 'paynow' ? 'PayNow' : 'Bank Transfer';
+}
+
+/** For auto-created payout rows when a job closes. */
+export async function getUserPayoutMethodLabel(userUid: string): Promise<string> {
+  if (!userUid) return 'Bank Transfer';
+  const snap = await getDoc(userRef(userUid));
+  if (!snap.exists()) return 'Bank Transfer';
+  return payoutMethodLabel((snap.data() as UserDoc).payout);
+}
+
+export async function deleteUser(uid: string): Promise<void> {
+  await deleteDoc(userRef(uid));
 }
 
 export const approveUser = async (uid: string) => {
@@ -129,6 +152,23 @@ export const blacklistUser = async (uid: string, reason: string, fields: string[
 };
 
 /** "They will be able to access the platform again" → back to an approved account. */
+/** Quick status change from the users table (reject/blacklist use a generic admin note). */
+export async function setUserAccountStatus(uid: string, status: AccountStatus): Promise<void> {
+  if (status === 'approved') {
+    await approveUser(uid);
+    return;
+  }
+  if (status === 'rejected') {
+    await rejectUser(uid, 'Status updated by admin.');
+    return;
+  }
+  if (status === 'blacklisted') {
+    await blacklistUser(uid, 'Status updated by admin.');
+    return;
+  }
+  await updateDoc(userRef(uid), { status, updatedAt: serverTimestamp() });
+}
+
 export const removeFromBlacklist = async (uid: string) => {
   await updateDoc(userRef(uid), {
     status: 'approved',
@@ -162,18 +202,6 @@ export const updatePayout = (uid: string, payout: Payout) =>
 
 /** Marks one of the user's documents as verified / rejected. */
 export async function setDocumentStatus(user: UserDoc, which: DocumentRef, status: 'verified' | 'rejected') {
-  if (which.kind === 'idDoc') {
-    const file = user.identityDocuments?.[which.doc]?.[which.side];
-    if (!file) return;
-    const updated = { ...file, status, reviewedAt: serverTimestamp() };
-    const legacy = user.identityDocument;
-    return updateDoc(userRef(user.uid), {
-      [`identityDocuments.${which.doc}.${which.side}`]: updated,
-      // Keep the old single-document copy in step when it is the same file.
-      ...(legacy && legacy.path === file.path ? { identityDocument: { ...legacy, status, reviewedAt: serverTimestamp() } } : {}),
-      updatedAt: serverTimestamp(),
-    });
-  }
   if (which.kind === 'identity' && user.identityDocument) {
     return updateDoc(userRef(user.uid), {
       identityDocument: { ...user.identityDocument, status, reviewedAt: serverTimestamp() },
@@ -192,30 +220,14 @@ export async function setDocumentStatus(user: UserDoc, which: DocumentRef, statu
   }
 }
 
-export type DocumentRef =
-  | { kind: 'identity' }
-  | { kind: 'idDoc'; doc: 'studentPass' | 'ic'; side: 'front' | 'back' }
-  | { kind: 'statement' }
-  | { kind: 'extra'; index: number };
+export type DocumentRef = { kind: 'identity' } | { kind: 'statement' } | { kind: 'extra'; index: number };
 
 export type UserDocument = { ref: DocumentRef; label: string; file: StoredFile };
 
 /** Every document the user has, in display order. */
 export function listDocuments(user: UserDoc): UserDocument[] {
   const out: UserDocument[] = [];
-  const idDocs = user.identityDocuments;
-  if (idDocs && (idDocs.studentPass || idDocs.ic)) {
-    // Front and back of each document the user uploaded in the app.
-    const names = { studentPass: 'Student Pass', ic: 'Identity Card (IC)' } as const;
-    (['studentPass', 'ic'] as const).forEach((doc) =>
-      (['front', 'back'] as const).forEach((side) => {
-        const file = idDocs[doc]?.[side];
-        if (file) {
-          out.push({ ref: { kind: 'idDoc', doc, side }, label: `${names[doc]} — ${side === 'front' ? 'Front' : 'Back'}`, file });
-        }
-      }),
-    );
-  } else if (user.identityDocument) {
+  if (user.identityDocument) {
     out.push({ ref: { kind: 'identity' }, label: user.identityDocument.label || 'Identity Document', file: user.identityDocument });
   }
   (user.documents ?? []).forEach((file, index) =>
@@ -268,14 +280,9 @@ export type NewUserInput = {
   nationality: string;
   dateOfBirth: string;
   placeOfBirth: string;
-  /** Student Pass and/or Identity Card (IC), each with front and back (same as the app). */
-  identity: Partial<Record<'studentPass' | 'ic', { front: File; back: File }>>;
-  /** Any other documents (optional). */
   documents: { label: string; file: File }[];
   payout: Payout;
 };
-
-const ID_LABEL = { studentPass: 'Student Pass', ic: 'Identity Card (IC)' } as const;
 
 /**
  * Creates the login (Firebase Authentication) and the profile (Firestore) for a new user.
@@ -287,19 +294,9 @@ export async function createUser(input: NewUserInput): Promise<string> {
   const uid = cred.user.uid;
   await signOut(secondaryAuth);
 
-  const identityDocuments: NonNullable<UserDoc['identityDocuments']> = {};
-  for (const kind of ['studentPass', 'ic'] as const) {
-    const sides = input.identity[kind];
-    if (!sides) continue;
-    identityDocuments[kind] = {
-      front: await uploadFile(uid, 'identity', sides.front, `${ID_LABEL[kind]} — Front Side`),
-      back: await uploadFile(uid, 'identity', sides.back, `${ID_LABEL[kind]} — Back Side`),
-    };
-  }
-  const extra: StoredFile[] = [];
-  for (const d of input.documents) extra.push(await uploadFile(uid, 'documents', d.file, d.label));
-  // Older screens read one identityDocument: keep the first front side there.
-  const identityDocument = identityDocuments.studentPass?.front ?? identityDocuments.ic?.front ?? null;
+  const documents: StoredFile[] = [];
+  for (const d of input.documents) documents.push(await uploadFile(uid, 'documents', d.file, d.label));
+  const [identityDocument, ...extra] = documents;
 
   const profile: PersonalInfo = {
     fullName: input.fullName.trim(),
@@ -320,8 +317,7 @@ export async function createUser(input: NewUserInput): Promise<string> {
     onboardingStep: 'done',
     status: 'approved',
     profile,
-    identityDocument,
-    identityDocuments,
+    identityDocument: identityDocument ?? null,
     documents: extra,
     payout: input.payout,
     createdBy: 'admin',
@@ -332,6 +328,81 @@ export async function createUser(input: NewUserInput): Promise<string> {
     approvedBy: adminId(),
   });
   return uid;
+}
+
+export type UpdateUserInput = {
+  uid: string;
+  previousEmail: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  address: string;
+  nric: string;
+  gender: string;
+  nationality: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  documents: { label: string; file?: File; existing?: StoredFile }[];
+  payout: Payout;
+};
+
+async function patchUserAuth(uid: string, email?: string, password?: string) {
+  const admin = auth.currentUser;
+  if (!admin) throw new Error('Not signed in');
+  const body: { uid: string; email?: string; password?: string } = { uid };
+  const nextEmail = email?.trim().toLowerCase();
+  if (nextEmail) body.email = nextEmail;
+  if (password && password.length >= 8) body.password = password;
+  if (!body.email && !body.password) return;
+
+  const res = await fetch('/api/admin/users/update-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await admin.getIdToken()}` },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    const err = new Error(json.error || 'Could not update login credentials.');
+    if (res.status === 409) (err as { code?: string }).code = 'auth/email-already-in-use';
+    throw err;
+  }
+}
+
+/** Updates an existing user profile (Firestore) and login email/password when provided. */
+export async function updateUser(input: UpdateUserInput): Promise<void> {
+  const stored: StoredFile[] = [];
+  for (const d of input.documents) {
+    if (d.file) stored.push(await uploadFile(input.uid, 'documents', d.file, d.label));
+    else if (d.existing) stored.push({ ...d.existing, ...(d.label.trim() ? { label: d.label.trim() } : {}) });
+  }
+  const [identityDocument, ...extra] = stored;
+
+  const profile: PersonalInfo = {
+    fullName: input.fullName.trim(),
+    nric: input.nric.trim().toUpperCase(),
+    gender: input.gender,
+    nationality: input.nationality,
+    dateOfBirth: input.dateOfBirth,
+    placeOfBirth: input.placeOfBirth || input.nationality,
+    address: input.address.trim(),
+  };
+
+  const nextEmail = input.email.trim().toLowerCase();
+  const emailChanged = nextEmail !== input.previousEmail.trim().toLowerCase();
+  if (emailChanged || (input.password && input.password.length >= 8)) {
+    await patchUserAuth(input.uid, emailChanged ? nextEmail : undefined, input.password);
+  }
+
+  await updateDoc(userRef(input.uid), {
+    email: nextEmail,
+    phone: input.phone,
+    profile,
+    identityDocument: identityDocument ?? null,
+    documents: extra,
+    payout: input.payout,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 function emptyProfile(): PersonalInfo {

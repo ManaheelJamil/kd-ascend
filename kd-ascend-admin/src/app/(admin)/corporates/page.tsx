@@ -1,70 +1,72 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Building2, Check, ChevronDown, Download, Filter, Search } from 'lucide-react';
-import { Avatar, Button, Card, ErrorNote, FullPageSpinner, PageTitle, cn } from '@/components/ui';
-import { DeleteCorporateDialog } from '@/components/CorporateBits';
-import {
-  CORPORATE_STATUSES,
-  assignCorporateNumbers,
-  corporateCode,
-  corporateStatusLabel,
-  subscribeCorporates,
-  type Corporate,
-  type CorporateStatus,
-} from '@/lib/corporates';
+import { useRouter } from 'next/navigation';
+import { Building2, Check, ChevronDown, Download, Filter, Search, SquarePen, Trash2 } from 'lucide-react';
+import { Avatar, Button, Card, ErrorNote, IconButton, PageShell, PageTitle, Spinner, ToolbarSearch, cn, ui } from '@/components/ui';
+import { DeleteCorporateDialog, StatusPicker } from '@/components/CorporateBits';
+import { CorporateStatusConfirmDialog } from '@/components/JobDialogs';
+import { useToast } from '@/components/Toast';
+import { CORPORATE_STATUSES, corporateStatusLabel, setCorporateStatus, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
 import { isoDay } from '@/lib/format';
 
-type SortKey = 'name' | 'contact' | 'email' | 'jobs' | 'status' | 'added';
+type SortKey = 'name' | 'email' | 'contact' | 'status' | 'added';
 
-function CorporatesList() {
+export default function CorporatesPage() {
   const router = useRouter();
-  const urlQ = useSearchParams().get('q') ?? '';
+  const toast = useToast();
   const [list, setList] = useState<Corporate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState(urlQ);
-  useEffect(() => setQ(urlQ), [urlQ]);
+  const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | CorporateStatus>('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'added', dir: -1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toDelete, setToDelete] = useState<Corporate | null>(null);
+  const [statusBusy, setStatusBusy] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{ corporate: Corporate; next: CorporateStatus } | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
-  useEffect(
-    () =>
-      subscribeCorporates(
-        (l) => {
-          setList(l);
-          setError(null);
-          setLoading(false);
-        },
-        (e) => {
-          setError(
-            (e as { code?: string }).code === 'permission-denied'
-              ? 'Permission denied while reading corporates. Publish the latest Firestore rules.'
-              : e.message,
-          );
-          setLoading(false);
-        },
-      ),
-    [],
-  );
+  const requestStatusChange = (corporate: Corporate, next: CorporateStatus) => {
+    if (next === corporate.status) return;
+    setStatusConfirm({ corporate, next });
+  };
 
-  // Corporate IDs (CRP-01 …) for corporates added before numbering existed.
-  const numbering = useRef(false);
+  const applyStatusChange = async () => {
+    if (!statusConfirm) return;
+    const { corporate, next } = statusConfirm;
+    setStatusBusy(corporate.id);
+    try {
+      await setCorporateStatus(corporate.id, next);
+      toast.success(`Corporate status updated to ${corporateStatusLabel(next)}.`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update corporate status.');
+      throw e;
+    } finally {
+      setStatusBusy(null);
+    }
+  };
+
   useEffect(() => {
-    if (loading || numbering.current || !list.some((c) => !c.corporateNo)) return;
-    numbering.current = true;
-    assignCorporateNumbers(list)
-      .catch(() => undefined)
-      .finally(() => {
-        numbering.current = false;
-      });
-  }, [list, loading]);
+    const unsub = subscribeCorporates(
+      (l) => {
+        setList(l);
+        setError(null);
+        setLoading(false);
+      },
+      (e) => {
+        setError(
+          (e as { code?: string }).code === 'permission-denied'
+            ? 'Permission denied while reading corporates. Publish the latest Firestore rules.'
+            : e.message,
+        );
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -79,7 +81,7 @@ function CorporatesList() {
       (c) =>
         (status === 'all' || c.status === status) &&
         (!needle ||
-          [corporateCode(c), c.name, c.location, c.contactName, c.contactEmail, c.contactPhone]
+          [c.name, c.industry, c.location, c.contactName, c.contactEmail, c.contactPhone]
             .filter(Boolean)
             .join(' ')
             .toLowerCase()
@@ -88,29 +90,24 @@ function CorporatesList() {
     const val = (c: Corporate): string | number =>
       sort.key === 'name'
         ? c.name.toLowerCase()
-        : sort.key === 'contact'
-          ? (c.contactName || '').toLowerCase()
-          : sort.key === 'email'
-            ? (c.contactEmail || '').toLowerCase()
-            : sort.key === 'jobs'
-              ? jobsPosted(c)
-              : sort.key === 'status'
-            ? c.status
-            : (c.createdAt?.toMillis?.() ?? Date.now());
+        : sort.key === 'email'
+          ? (c.contactEmail || '').toLowerCase()
+          : sort.key === 'contact'
+            ? (c.contactPhone || '').toLowerCase()
+            : sort.key === 'status'
+              ? c.status
+              : (c.createdAt?.toMillis?.() ?? Date.now());
     return filtered.sort((a, b) => (val(a) < val(b) ? -sort.dir : val(a) > val(b) ? sort.dir : 0));
   }, [list, q, status, sort]);
 
-
-  const emptyText = q.trim()
-    ? 'No corporates match your search.'
-    : `No ${corporateStatusLabel(status as CorporateStatus).toLowerCase()} corporates.`;
+  const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
   const exportCsv = () => {
     const pick = selected.size ? rows.filter((r) => selected.has(r.id)) : rows;
     const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-    const head = ['Corporate ID', 'Corporate', 'Contact Person', 'Contact Email', 'Contact Phone', 'Location', 'Jobs Posted', 'Status', 'Added'];
+    const head = ['Corporate', 'Industry', 'Location', 'Status', 'Contact Person', 'Contact Email', 'Contact Phone', 'Added'];
     const lines = pick.map((c) =>
-      [corporateCode(c), c.name, c.contactName, c.contactEmail, c.contactPhone, c.location, String(jobsPosted(c)), corporateStatusLabel(c.status), isoDay(c.createdAt)]
+      [c.name, c.industry, c.location, corporateStatusLabel(c.status), c.contactName, c.contactEmail, c.contactPhone, isoDay(c.createdAt)]
         .map(esc)
         .join(','),
     );
@@ -123,25 +120,23 @@ function CorporatesList() {
   };
 
   const SortHead = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => (
-    <th className={cn('px-[18px] text-[13px] font-semibold text-ink', className)}>
+    <th className={cn('px-[18px]', ui.tableHead, className)}>
       <button
         type="button"
         onClick={() => setSort((s) => ({ key: k, dir: s.key === k ? (s.dir === 1 ? -1 : 1) : 1 }))}
         className="inline-flex items-center gap-0.5 hover:text-ink"
       >
         {label}
-        {sort.key === k ? <ChevronDown className={cn('size-4 transition', sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} /> : null}
+        <ChevronDown className={cn('size-5 transition', sort.key === k && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
       </button>
     </th>
   );
 
-  if (loading) return <FullPageSpinner />;
-
   return (
-    <div className="flex flex-col gap-[27px]">
-      <PageTitle title="Corporates Management" subtitle="Manage corporate accounts and their job activity.">
+    <PageShell>
+      <PageTitle title="Corporates Management" subtitle="Manage corporate partners and their accounts">
         <Link href="/corporates/new">
-          <Button className="h-[45px] rounded-card px-5">
+          <Button>
             <Building2 className="size-[18px]" />
             Add Corporate
           </Button>
@@ -150,18 +145,10 @@ function CorporatesList() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <Card className="flex flex-wrap items-center gap-[14px] p-4 sm:p-[28px]">
-        <div className="relative min-w-0 basis-full sm:min-w-[220px] sm:flex-1 sm:basis-auto">
-          <Search className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search corporate"
-            className="h-[46px] w-full rounded-card border border-field pr-4 pl-[50px] text-base outline-none sm:h-[52px] sm:text-lg placeholder:text-[#0a0a0a]/50 focus:border-brand"
-          />
-        </div>
-        <div className="relative flex-1 sm:flex-none" ref={filterRef}>
-          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg w-full sm:w-auto" onClick={() => setFilterOpen((o) => !o)}>
+      <Card pad="lg" className="flex flex-wrap items-center gap-[14px]">
+        <ToolbarSearch value={q} onChange={setQ} placeholder="Search corporate" icon={Search} />
+        <div className="relative" ref={filterRef}>
+          <Button variant="outline" className={ui.toolbarControl} onClick={() => setFilterOpen((o) => !o)}>
             <Filter className="size-5" />
             {status === 'all' ? 'Filter' : corporateStatusLabel(status)}
           </Button>
@@ -185,18 +172,24 @@ function CorporatesList() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg flex-1 sm:flex-none" onClick={exportCsv}>
+        <Button variant="outline" className={cn(ui.toolbarControl, 'px-5')} onClick={exportCsv}>
           <Download className="size-5" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>
       </Card>
 
-      <Card className="overflow-hidden xl:min-h-[360px] xl:border-0 xl:bg-transparent">
+      <Card className="overflow-hidden md:min-h-[400px]">
+        {loading ? (
+          <div className="grid min-h-[280px] place-items-center py-16">
+            <Spinner className="size-8" />
+          </div>
+        ) : (
+          <>
         {/* Phones: one card per corporate instead of the wide table. */}
-        <ul className="divide-y divide-line xl:hidden">
+        <ul className="divide-y divide-line md:hidden">
           {rows.length === 0 ? (
             <li className="px-4 py-12 text-center text-[15px] text-muted">
-              {list.length === 0 ? 'No corporates yet.' : emptyText}
+              {list.length === 0 ? 'No corporates yet.' : 'No corporates match your search.'}
             </li>
           ) : (
             rows.map((c) => (
@@ -209,20 +202,27 @@ function CorporatesList() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
-                    <StatusDot status={c.status} />
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
+                    </span>
                   </div>
                   {c.contactEmail ? <p className="truncate text-[13px] text-muted">{c.contactEmail}</p> : null}
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="truncate text-[12.5px] text-muted">
-                      {c.contactName || '—'} · {jobsPosted(c)} jobs posted
+                      {c.contactPhone || '—'} · {isoDay(c.createdAt)}
                     </p>
-                    <Link
-                      href={`/corporates/${c.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex h-8 shrink-0 items-center rounded-md bg-brand/10 px-3 text-[12.5px] font-semibold text-brand"
-                    >
-                      View Details
-                    </Link>
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/corporates/${c.id}/edit`}
+                        aria-label="Edit"
+                        className="grid size-[31px] place-items-center rounded-control text-muted hover:bg-page hover:text-ink"
+                      >
+                        <SquarePen className="size-[18px]" />
+                      </Link>
+                      <IconButton label="Delete" onClick={() => setToDelete(c)} className="text-danger">
+                        <Trash2 className="size-[18px]" />
+                      </IconButton>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -230,25 +230,32 @@ function CorporatesList() {
           )}
         </ul>
 
-        <div className="hidden overflow-x-auto xl:block">
-          <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
             <thead>
-              <tr className="h-14">
-                <th className="w-[24%] px-[18px] text-[13px] font-semibold text-ink">
+              <tr className="h-16 border-b border-line bg-page">
+                <th className="relative w-[25%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allChecked}
+                    onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)))}
+                    className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
+                  />
                   <button
                     type="button"
                     onClick={() => setSort((s) => ({ key: 'name', dir: s.key === 'name' ? (s.dir === 1 ? -1 : 1) : 1 }))}
                     className="inline-flex items-center gap-0.5 hover:text-ink"
                   >
-                    Corporate Name
-                    {sort.key === 'name' ? <ChevronDown className={cn('size-4', sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} /> : null}
+                    Corporate
+                    <ChevronDown className={cn('size-5', sort.key === 'name' && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
                   </button>
                 </th>
-                <SortHead k="contact" label="Contact Person" className="w-[17%]" />
-                <SortHead k="email" label="Email" className="w-[23%]" />
-                <SortHead k="jobs" label="Jobs Posted" className="w-[12%]" />
-                <SortHead k="status" label="Status" className="w-[11%]" />
-                <th className="w-[13%] px-[18px] text-center text-[13px] font-semibold text-ink">Action</th>
+                <SortHead k="email" label="Email" className="w-[15%]" />
+                <SortHead k="contact" label="Contact" className="w-[15%]" />
+                <SortHead k="status" label="Status" className="w-[15%]" />
+                <SortHead k="added" label="Added Date" className="w-[15%]" />
+                <th className="w-[15%] px-[18px] pr-[18px] text-right text-[13.5px] font-semibold text-muted">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +270,7 @@ function CorporatesList() {
                         </Link>
                       </>
                     ) : (
-                      emptyText
+                      'No corporates match your search.'
                     )}
                   </td>
                 </tr>
@@ -272,26 +279,48 @@ function CorporatesList() {
                   <tr
                     key={c.id}
                     onClick={() => router.push(`/corporates/${c.id}`)}
-                    className="h-[60px] cursor-pointer rounded-control hover:bg-white"
+                    className="h-[69px] cursor-pointer border-b border-line last:border-b-0 hover:bg-page/70"
                   >
-                    <td className="px-[18px]">
-                      <p className="truncate text-[14px] font-bold text-ink">{c.name}</p>
+                    <td className="relative px-[18px] pl-[51px]">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${c.name}`}
+                        checked={selected.has(c.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() =>
+                          setSelected((s) => {
+                            const n = new Set(s);
+                            if (n.has(c.id)) n.delete(c.id);
+                            else n.add(c.id);
+                            return n;
+                          })
+                        }
+                        className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
+                      />
+                      <span className="block truncate text-[15.8px] font-medium text-ink">{c.name}</span>
                     </td>
-                    <td className="truncate px-[18px] text-[13.5px] text-ink/80">{c.contactName || '—'}</td>
-                    <td className="truncate px-[18px] text-[13.5px] text-ink/80" title={c.contactEmail}>
+                    <td className="truncate px-1.5 text-[13.5px] text-muted" title={c.contactEmail}>
                       {c.contactEmail || '—'}
                     </td>
-                    <td className="px-[18px] text-[13.5px] text-ink/80">{jobsPosted(c)}</td>
-                    <td className="px-[18px]">
-                      <StatusDot status={c.status} />
+                    <td className="truncate px-1.5 text-[13.5px] text-muted">{c.contactPhone || '—'}</td>
+                    <td className="min-w-[124px] px-[18px]" onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
                     </td>
-                    <td className="px-[18px] text-center" onClick={(e) => e.stopPropagation()}>
-                      <Link
-                        href={`/corporates/${c.id}`}
-                        className="inline-flex h-7 items-center rounded-md bg-brand/10 px-3 text-[12px] font-semibold text-brand hover:bg-brand/15"
-                      >
-                        View Details
-                      </Link>
+                    <td className="px-[18px] text-[13.5px] text-muted">{isoDay(c.createdAt)}</td>
+                    <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Link
+                          href={`/corporates/${c.id}/edit`}
+                          aria-label="Edit"
+                          title="Edit"
+                          className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
+                        >
+                          <SquarePen className="size-[18px]" />
+                        </Link>
+                        <IconButton label="Delete" onClick={() => setToDelete(c)} className="text-danger">
+                          <Trash2 className="size-[18px]" />
+                        </IconButton>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -299,43 +328,18 @@ function CorporatesList() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </Card>
 
-      {rows.length ? (
-        <p className="text-[12px] text-muted">
-          Showing 1–{rows.length} of {rows.length} corporate{rows.length === 1 ? '' : 's'}
-        </p>
-      ) : null}
-
       <DeleteCorporateDialog corporate={toDelete} onClose={() => setToDelete(null)} />
-    </div>
-  );
-}
-
-/** Jobs posted so far (active + completed). Filled in by the Jobs module. */
-const jobsPosted = (c: Corporate) => (c.activeJobs ?? 0) + (c.completedJobs ?? 0);
-
-const DOT: Record<CorporateStatus, string> = {
-  active: 'bg-success text-success',
-  pending: 'bg-brand text-brand',
-  inactive: 'bg-muted text-muted',
-};
-
-/** Figma "● Active": coloured dot + label. */
-function StatusDot({ status }: { status: CorporateStatus }) {
-  const [dot, text] = (DOT[status] ?? DOT.pending).split(' ');
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-[13.5px] font-medium whitespace-nowrap', text)}>
-      <span className={cn('size-2 rounded-full', dot)} />
-      {corporateStatusLabel(status)}
-    </span>
-  );
-}
-
-export default function CorporatesPage() {
-  return (
-    <Suspense fallback={<FullPageSpinner />}>
-      <CorporatesList />
-    </Suspense>
+      <CorporateStatusConfirmDialog
+        corporate={statusConfirm?.corporate ?? null}
+        nextStatus={statusConfirm?.next ?? null}
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={applyStatusChange}
+      />
+    </PageShell>
   );
 }

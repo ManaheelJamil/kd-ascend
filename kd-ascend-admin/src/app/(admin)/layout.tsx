@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import { FullPageSpinner } from '@/components/ui';
 import { useAdminAuth } from '@/context/AdminAuth';
 import { UsersDataProvider } from '@/context/UsersData';
+import { ToastProvider } from '@/components/Toast';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { loading, admin } = useAdminAuth();
@@ -23,17 +24,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading || !admin) return <FullPageSpinner />;
 
   return (
-    <UsersDataProvider>
-      <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
-      {menuOpen ? (
-        <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
-      ) : null}
-      <div data-admin-shell className="min-h-screen lg:pl-[260px] 2xl:pl-[324px]">
-        <Suspense fallback={<div className="h-[68px] border-b border-line md:h-[108px]" />}>
-          <Header onMenu={() => setMenuOpen(true)} />
-        </Suspense>
-        <main className="px-4 pt-5 pb-12 sm:px-5 md:px-6 md:pt-[27px] 2xl:pr-[49px] 2xl:pl-[27px]">{children}</main>
-      </div>
-    </UsersDataProvider>
+    <ToastProvider>
+      <UsersDataProvider>
+        <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
+        {menuOpen ? (
+          <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
+        ) : null}
+        <div className="min-h-screen lg:pl-[260px]">
+          <Suspense fallback={<div className="h-[68px] border-b border-line md:h-[108px]" />}>
+            <Header onMenu={() => setMenuOpen(true)} />
+          </Suspense>
+          <main className="px-4 pt-5 pb-12 sm:px-5 md:pt-[27px] md:pr-[49px] md:pl-[27px]">{children}</main>
+        </div>
+      </UsersDataProvider>
+    </ToastProvider>
   );
 }

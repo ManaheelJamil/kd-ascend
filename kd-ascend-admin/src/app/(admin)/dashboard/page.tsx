@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Building2, Clock, TrendingDown, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { Card, ErrorNote, FullPageSpinner, cn } from '@/components/ui';
+import { Card, ErrorNote, FullPageSpinner, PageShell, SectionTitle, cn, ui } from '@/components/ui';
 import UsersTable from '@/components/UsersTable';
 import SignupsChart from '@/components/SignupsChart';
 import { useUsersData } from '@/context/UsersData';
@@ -45,15 +45,15 @@ function StatCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="block rounded-card border border-line bg-white p-4 transition hover:border-brand/40 sm:p-[22.5px]">
+    <Link href={href} className={cn('block rounded-card border border-line bg-white transition hover:border-brand/40', ui.cardPad)}>
       <div className="flex items-start justify-between gap-2">
-        <span className={cn('grid size-9 place-items-center rounded-control sm:size-[45px]', iconClass)}>
-          <Icon className="size-[18px] sm:size-[22px]" strokeWidth={1.8} />
+        <span className={cn('grid size-[45px] place-items-center rounded-control', iconClass)}>
+          <Icon className="size-[22px]" strokeWidth={1.8} />
         </span>
-        {note ? <span className="hidden sm:block">{note}</span> : null}
+        {note}
       </div>
-      <p className="mt-3 text-[13px] leading-[18px] font-medium text-muted sm:mt-[18px] sm:text-[13.5px] sm:tracking-wide sm:uppercase">{label}</p>
-      <p className="mt-1 text-[24px] leading-8 font-bold text-ink sm:text-[27px] sm:leading-9">{value.toLocaleString()}</p>
+      <p className="mt-[18px] text-[13.5px] font-medium tracking-wide text-muted uppercase">{label}</p>
+      <p className="mt-1 text-[27px] leading-9 font-bold text-ink">{value.toLocaleString()}</p>
     </Link>
   );
 }
@@ -99,10 +99,10 @@ export default function DashboardPage() {
   if (loading) return <FullPageSpinner />;
 
   return (
-    <div className="flex flex-col gap-[27px]">
+    <PageShell>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-[22.5px] xl:grid-cols-4">
+      <div className="grid gap-[22.5px] sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Users}
           iconClass="bg-brand/10 text-brand"
@@ -118,12 +118,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-[27px] xl:grid-cols-2">
-        <Card className="p-4 sm:p-[22.5px]">
+        <Card pad="default">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-ink">Sign-ups Overview</h2>
-              <p className="text-[13.5px] text-muted">Last 6 months</p>
-            </div>
+            <SectionTitle title="Sign-ups Overview" subtitle="Last 6 months" size="sm" />
             <Trend value={monthChange} suffix="%" />
           </div>
           <div className="mt-4">
@@ -131,9 +128,8 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-[22.5px]">
-          <h2 className="text-lg font-bold text-ink">Users by Status</h2>
-          <p className="text-[13.5px] text-muted">Where every account stands</p>
+        <Card pad="default">
+          <SectionTitle title="Users by Status" subtitle="Where every account stands" size="sm" />
           <div className="mt-6 flex flex-col gap-[18px]">
             {statusBars.map((s) => {
               const pct = counts.total ? Math.round((s.value / counts.total) * 100) : 0;
@@ -159,17 +155,14 @@ export default function DashboardPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between gap-3 p-4 sm:p-[22.5px]">
-          <div>
-            <h2 className="text-lg font-bold text-ink">Recent Users</h2>
-            <p className="text-[13.5px] text-muted">Latest registrations</p>
-          </div>
+        <div className={cn('flex items-center justify-between gap-3', ui.cardPad)}>
+          <SectionTitle title="Recent Users" subtitle="Latest registrations" size="sm" />
           <Link href="/users" className="inline-flex items-center gap-1 text-[13.5px] font-semibold text-brand hover:underline">
             View All <ArrowRight className="size-4" />
           </Link>
         </div>
         <UsersTable users={users.slice(0, 5)} selectable={false} emptyText="No users yet. New sign-ups from the app appear here." />
       </Card>
-    </div>
+    </PageShell>
   );
 }

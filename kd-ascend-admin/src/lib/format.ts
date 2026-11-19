@@ -33,6 +33,22 @@ export function shortDay(t?: Timestamp | null): string {
   return d ? `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : '—';
 }
 
+/** 2026-01-18 → 18 Jan 2026 */
+export function longDayFromIso(iso?: string): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+/** 2026-01-18 → Jan 18, 2026 */
+export function shortDayFromIso(iso?: string): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+
 /** yyyy-mm-dd → 23-06-1996 */
 export function dob(value?: string): string {
   if (!value) return '—';
@@ -51,11 +67,6 @@ export function initial(u: Pick<UserDoc, 'profile' | 'email'>): string {
 /** Short, stable ID shown as "User ID : 7F3K2A". */
 export function shortId(uid: string): string {
   return uid.slice(0, 6).toUpperCase();
-}
-
-/** User ID shown in the dashboard: KD01U, KD02U … KD100U ("KD…U" until the number is assigned). */
-export function userCode(u: Pick<UserDoc, 'userNo'>): string {
-  return u.userNo ? `KD${String(u.userNo).padStart(2, '0')}U` : 'KD…U';
 }
 
 /** Same rules as the mobile app (src/utils/validation.ts): returns "+6591234567" or null. */
@@ -90,6 +101,10 @@ export const STATUS_LABEL: Record<AccountStatus, string> = {
   rejected: 'Rejected',
   blacklisted: 'Blacklisted',
 };
+
+export const ACCOUNT_STATUSES: { value: AccountStatus; label: string }[] = (
+  Object.keys(STATUS_LABEL) as AccountStatus[]
+).map((value) => ({ value, label: STATUS_LABEL[value] }));
 
 export function sortByNewest(users: UserDoc[]): UserDoc[] {
   return [...users].sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));

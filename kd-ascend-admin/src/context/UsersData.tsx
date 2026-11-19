@@ -1,8 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { subscribeUsers } from '@/lib/users';
-import { assignUserNumbers } from '@/lib/userNumbers';
 import { sortByNewest } from '@/lib/format';
 import type { AccountStatus, UserDoc } from '@/lib/types';
 
@@ -23,37 +22,24 @@ export function UsersDataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(
-    () =>
-      subscribeUsers(
-        (list) => {
-          setUsers(sortByNewest(list));
-          setError(null);
-          setLoading(false);
-        },
-        (e) => {
-          setError(
-            (e as { code?: string }).code === 'permission-denied'
-              ? 'Permission denied while reading users. Publish the latest Firestore rules (see README).'
-              : e.message,
-          );
-          setLoading(false);
-        },
-      ),
-    [],
-  );
-
-  // Give every user a sequential ID (KD01U …). Runs again when new sign-ups appear.
-  const numbering = useRef(false);
   useEffect(() => {
-    if (loading || numbering.current || !users.some((u) => !u.userNo)) return;
-    numbering.current = true;
-    assignUserNumbers(users)
-      .catch((e) => console.warn('Could not assign user IDs', e))
-      .finally(() => {
-        numbering.current = false;
-      });
-  }, [users, loading]);
+    const unsub = subscribeUsers(
+      (list) => {
+        setUsers(sortByNewest(list));
+        setError(null);
+        setLoading(false);
+      },
+      (e) => {
+        setError(
+          (e as { code?: string }).code === 'permission-denied'
+            ? 'Permission denied while reading users. Publish the latest Firestore rules (see README).'
+            : e.message,
+        );
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, []);
 
   const counts = useMemo(() => {
     const c: Counts = { total: users.length, incomplete: 0, under_review: 0, approved: 0, rejected: 0, blacklisted: 0 };
