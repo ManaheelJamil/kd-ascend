@@ -10,6 +10,7 @@ import {
   PAYMENT_STATUSES,
   formatMoney,
   getPaymentTransactions,
+  subscribePaymentTransactions,
   syncLateCancelPenalties,
   paymentStats,
   paymentStatusLabel,
@@ -67,8 +68,12 @@ export default function PaymentPage() {
 
   const stats = useMemo(() => paymentStats(list), [list]);
 
+  // Live from Firestore; also creates any missing late-cancel penalties (safe to repeat).
   useEffect(() => {
-    void syncLateCancelPenalties().then(() => setList(getPaymentTransactions()));
+    const off = subscribePaymentTransactions(setList, (e) => toast.error(e.message || 'Could not load payments.'));
+    void syncLateCancelPenalties().catch(() => undefined);
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -133,8 +138,9 @@ export default function PaymentPage() {
     setStatusBusy(transaction.id);
     try {
       await updatePaymentStatus(transaction.id, next);
-      setList(getPaymentTransactions());
       toast.success(`Transaction ${transaction.txnId} updated to ${paymentStatusLabel(next)}.`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update the payment.');
     } finally {
       setStatusBusy(null);
     }

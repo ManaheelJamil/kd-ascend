@@ -1,7 +1,23 @@
-/** Placeholder until job applications are stored in Firestore. */
+/**
+ * Job applications, stored in Firestore: jobs/{jobId}/applications/{applicationId}.
+ * One collection-group listener keeps every job's list live (admin dashboard only).
+ */
 
+import {
+  addDoc,
+  collection,
+  collectionGroup,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  updateDoc,
+  type Timestamp,
+} from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { eventSlotOverlaps } from './jobSchedule';
-import { getAllJobs, getJob, type Job } from './jobs';
+import { getAllJobs, getJob, jobsReady, type Job } from './jobs';
+import { liveStore, withoutUndefined } from './live';
 
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -25,207 +41,81 @@ export type JobApplication = {
   doneBefore: string;
   /** When the member cancelled from the app (ISO). Used for late-cancel penalty. */
   cancelledAt?: string;
+  /** Parent job (jobs/{jobId}). */
+  jobId?: string;
+  addedAt?: Timestamp | null;
+  addedBy?: string;
 };
 
-type SeedRow = Omit<JobApplication, 'id'>;
+const adminId = () => auth.currentUser?.email ?? auth.currentUser?.uid ?? 'admin';
+const appsCol = (jobId: string) => collection(db, 'jobs', jobId, 'applications');
+const appRef = (jobId: string, applicationId: string) => doc(db, 'jobs', jobId, 'applications', applicationId);
+const millis = (t?: Timestamp | null) => (t && typeof t.toMillis === 'function' ? t.toMillis() : Number.MAX_SAFE_INTEGER);
 
-const APPLICATIONS_BY_JOB: Record<string, SeedRow[]> = {
-  'job-1': [
-    {
-      userUid: '',
-      uid: 'UID8',
-      name: 'John Doe',
-      email: 'john.doe@gmail.com',
-      phone: '+65 9123 4567',
-      status: 'pending',
-      doneBefore: '03',
+/** Every application of every job, grouped by job id, oldest first. */
+const appsStore = liveStore<Map<string, JobApplication[]>>(new Map(), (set, fail) =>
+  onSnapshot(
+    collectionGroup(db, 'applications'),
+    (snap) => {
+      const byJob = new Map<string, JobApplication[]>();
+      snap.docs.forEach((d) => {
+        const jobId = d.ref.parent.parent?.id;
+        if (!jobId) return;
+        const a = d.data() as Omit<JobApplication, 'id'>;
+        const row: JobApplication = {
+          ...a,
+          id: d.id,
+          jobId,
+          userUid: a.userUid ?? '',
+          uid: a.uid ?? '',
+          name: a.name ?? '',
+          email: a.email ?? '',
+          phone: a.phone ?? '',
+          doneBefore: a.doneBefore ?? '00',
+        };
+        byJob.set(jobId, [...(byJob.get(jobId) ?? []), row]);
+      });
+      byJob.forEach((list) => list.sort((x, y) => millis(x.addedAt) - millis(y.addedAt)));
+      set(byJob);
     },
-    {
-      userUid: '',
-      uid: 'UID1',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@gmail.com',
-      phone: '+65 9234 5678',
-      status: 'rejected',
-      doneBefore: '03',
-    },
-    {
-      userUid: '',
-      uid: 'UID3',
-      name: 'Emily Davis',
-      email: 'emily.davis@gmail.com',
-      phone: '+65 9345 6789',
-      status: 'approved',
-      doneBefore: '00',
-    },
-  ],
-  'job-2': [
-    {
-      userUid: '',
-      uid: 'UID2',
-      name: 'Michael Chen',
-      email: 'michael.chen@gmail.com',
-      phone: '+65 8111 2233',
-      status: 'pending',
-      doneBefore: '01',
-    },
-    {
-      userUid: '',
-      uid: 'UID5',
-      name: 'Priya Nair',
-      email: 'priya.nair@gmail.com',
-      phone: '+65 8222 3344',
-      status: 'pending',
-      doneBefore: '05',
-    },
-    {
-      userUid: '',
-      uid: 'UID9',
-      name: 'Alex Tan',
-      email: 'alex.tan@gmail.com',
-      phone: '+65 8333 4455',
-      status: 'cancelled',
-      doneBefore: '02',
-      cancelledAt: '2026-02-19T22:00:00.000Z',
-    },
-    {
-      userUid: '',
-      uid: 'UID4',
-      name: 'Lisa Wong',
-      email: 'lisa.wong@gmail.com',
-      phone: '+65 8444 5566',
-      status: 'approved',
-      doneBefore: '04',
-    },
-  ],
-  'job-3': [
-    {
-      userUid: '',
-      uid: 'UID6',
-      name: 'David Lim',
-      email: 'david.lim@gmail.com',
-      phone: '+65 8555 6677',
-      status: 'approved',
-      doneBefore: '06',
-    },
-    {
-      userUid: '',
-      uid: 'UID7',
-      name: 'Nur Aisha',
-      email: 'nur.aisha@gmail.com',
-      phone: '+65 8666 7788',
-      status: 'approved',
-      doneBefore: '03',
-    },
-    {
-      userUid: '',
-      uid: 'UID0',
-      name: 'Ryan Koh',
-      email: 'ryan.koh@gmail.com',
-      phone: '+65 8777 8899',
-      status: 'approved',
-      doneBefore: '01',
-    },
-    {
-      userUid: '',
-      uid: 'UID11',
-      name: 'Grace Ho',
-      email: 'grace.ho@gmail.com',
-      phone: '+65 8888 9900',
-      status: 'rejected',
-      doneBefore: '00',
-    },
-    {
-      userUid: '',
-      uid: 'UID12',
-      name: 'Tommy Ang',
-      email: 'tommy.ang@gmail.com',
-      phone: '+65 8999 0011',
-      status: 'approved',
-      doneBefore: '02',
-    },
-    {
-      userUid: '',
-      uid: 'UID13',
-      name: 'Mei Lin',
-      email: 'mei.lin@gmail.com',
-      phone: '+65 9000 1122',
-      status: 'approved',
-      doneBefore: '07',
-    },
-  ],
-  'job-4': [
-    {
-      userUid: '',
-      uid: 'UID14',
-      name: 'James Lee',
-      email: 'james.lee@gmail.com',
-      phone: '+65 9111 2233',
-      status: 'pending',
-      doneBefore: '00',
-    },
-  ],
-  'job-5': [
-    {
-      userUid: '',
-      uid: 'UID15',
-      name: 'Sophie Ng',
-      email: 'sophie.ng@gmail.com',
-      phone: '+65 9222 3344',
-      status: 'approved',
-      doneBefore: '08',
-    },
-    {
-      userUid: '',
-      uid: 'UID16',
-      name: 'Hassan Ali',
-      email: 'hassan.ali@gmail.com',
-      phone: '+65 9333 4455',
-      status: 'approved',
-      doneBefore: '12',
-    },
-    {
-      userUid: '',
-      uid: 'UID17',
-      name: 'Yuki Sato',
-      email: 'yuki.sato@gmail.com',
-      phone: '+65 9444 5566',
-      status: 'approved',
-      doneBefore: '04',
-    },
-  ],
-};
-
-function seedForJob(jobId: string): JobApplication[] {
-  const rows = APPLICATIONS_BY_JOB[jobId] ?? [];
-  return rows.map((row, i) => ({ ...row, id: `${jobId}-app-${i + 1}` }));
-}
-
-const byJob = new Map<string, JobApplication[]>(
-  Object.keys(APPLICATIONS_BY_JOB).map((jobId) => [jobId, seedForJob(jobId)]),
+    (e) => fail(e),
+  ),
 );
 
+/** Resolves once applications (and jobs) have loaded. */
+export async function applicationsReady(): Promise<void> {
+  await Promise.all([appsStore.ready(), jobsReady()]);
+}
+
 export function getJobApplications(jobId: string): JobApplication[] {
-  if (!byJob.has(jobId)) {
-    byJob.set(jobId, []);
-  }
-  return [...(byJob.get(jobId) ?? [])];
+  return [...(appsStore.get().get(jobId) ?? [])];
+}
+
+/** One job's applications, live. */
+export function subscribeJobApplications(
+  jobId: string,
+  onData: (list: JobApplication[]) => void,
+  onError?: (e: Error) => void,
+): () => void {
+  return appsStore.subscribe((map) => onData([...(map.get(jobId) ?? [])]), onError);
+}
+
+/** Every application, live (e.g. a user's job history). */
+export function subscribeAllApplications(
+  onData: (byJob: Map<string, JobApplication[]>) => void,
+  onError?: (e: Error) => void,
+): () => void {
+  return appsStore.subscribe(onData, onError);
 }
 
 /** Jobs where this user appears on the application list (mobile apply or admin add). */
 export function getJobsForApplicantUser(userUid: string, email?: string): Job[] {
   const emailNorm = email?.trim().toLowerCase() ?? '';
-  const jobs: Job[] = [];
-  for (const job of getAllJobs()) {
-    const apps = getJobApplications(job.id);
-    const onList = apps.some(
-      (a) =>
-        (userUid && a.userUid === userUid) ||
-        (emailNorm && a.email.trim().toLowerCase() === emailNorm),
-    );
-    if (onList) jobs.push(job);
-  }
-  return jobs;
+  return getAllJobs().filter((job) =>
+    getJobApplications(job.id).some(
+      (a) => (userUid && a.userUid === userUid) || (emailNorm && a.email.trim().toLowerCase() === emailNorm),
+    ),
+  );
 }
 
 export function applicationStats(jobId: string): { total: number; pending: number } {
@@ -239,14 +129,33 @@ export function findApplicationTimeConflict(
   userUid: string,
   targetJob: Job,
 ): { jobId: string; title: string; jobIdLabel: string } | null {
+  if (!userUid) return null;
   for (const other of getAllJobs()) {
     if (other.id === targetJob.id) continue;
+    if (other.status === 'cancelled') continue;
     if (!eventSlotOverlaps(targetJob.eventDate, targetJob.eventTime, other.eventDate, other.eventTime)) continue;
-    const apps = getJobApplications(other.id);
-    const hit = apps.find((a) => a.userUid === userUid && activeStatuses.includes(a.status));
+    const hit = getJobApplications(other.id).find((a) => a.userUid === userUid && activeStatuses.includes(a.status));
     if (hit) return { jobId: other.id, title: other.title, jobIdLabel: other.jobId };
   }
   return null;
+}
+
+/** How many jobs this user has completed before: approved on a closed job. */
+export function jobsDoneBefore(userUid: string, email = ''): number {
+  const emailNorm = email.trim().toLowerCase();
+  let n = 0;
+  for (const job of getAllJobs()) {
+    if (job.status !== 'closed') continue;
+    if (
+      getJobApplications(job.id).some(
+        (a) =>
+          a.status === 'approved' &&
+          ((userUid && a.userUid === userUid) || (emailNorm && a.email.trim().toLowerCase() === emailNorm)),
+      )
+    )
+      n += 1;
+  }
+  return n;
 }
 
 export type AddApplicantInput = {
@@ -269,28 +178,30 @@ function alreadyOnJob(list: JobApplication[], user: AddApplicantInput): boolean 
 }
 
 export async function addJobApplication(job: Job, user: AddApplicantInput): Promise<void> {
-  const list = getJobApplications(job.id);
-  if (alreadyOnJob(list, user)) {
+  await applicationsReady();
+  const fresh = getJob(job.id) ?? job;
+  if (alreadyOnJob(getJobApplications(fresh.id), user)) {
     throw new Error('This user is already on this job.');
   }
-  const conflict = findApplicationTimeConflict(user.userUid, job);
+  const conflict = findApplicationTimeConflict(user.userUid, fresh);
   if (conflict) {
     throw new Error(`Time conflict with ${conflict.title} (${conflict.jobIdLabel}) on the same date and hours.`);
   }
-  const id = `${job.id}-app-${Date.now()}`;
-  byJob.set(job.id, [
-    ...list,
-    {
-      id,
+  await addDoc(
+    appsCol(fresh.id),
+    withoutUndefined({
+      jobId: fresh.id,
       userUid: user.userUid,
       uid: user.uid,
       name: user.name,
-      email: user.email,
+      email: user.email.trim(),
       phone: user.phone,
-      status: 'pending',
-      doneBefore: '00',
-    },
-  ]);
+      status: 'pending' as ApplicationStatus,
+      doneBefore: String(jobsDoneBefore(user.userUid, user.email)).padStart(2, '0'),
+      addedAt: serverTimestamp(),
+      addedBy: adminId(),
+    }),
+  );
 }
 
 export async function setApplicationStatus(
@@ -298,20 +209,15 @@ export async function setApplicationStatus(
   applicationId: string,
   status: ApplicationStatus,
 ): Promise<void> {
-  const list = getJobApplications(jobId);
-  byJob.set(
-    jobId,
-    list.map((a) => (a.id === applicationId ? { ...a, status } : a)),
-  );
+  await updateDoc(appRef(jobId, applicationId), {
+    status,
+    statusUpdatedAt: serverTimestamp(),
+    statusUpdatedBy: adminId(),
+  });
 }
 
 export async function removeJobApplication(jobId: string, applicationId: string): Promise<void> {
-  const list = getJobApplications(jobId);
-  const next = list.filter((a) => a.id !== applicationId);
-  if (next.length === list.length) {
-    throw new Error('Application not found.');
-  }
-  byJob.set(jobId, next);
+  await deleteDoc(appRef(jobId, applicationId));
 }
 
 /** Member cancelled from the app; late cancel (under 24h before shift) creates a penalty row in payments. */
@@ -320,19 +226,19 @@ export async function cancelJobApplication(
   applicationId: string,
   cancelledAt: Date = new Date(),
 ): Promise<void> {
-  const list = getJobApplications(jobId);
-  const app = list.find((a) => a.id === applicationId);
+  await applicationsReady();
+  const app = getJobApplications(jobId).find((a) => a.id === applicationId);
   if (!app) throw new Error('Application not found.');
   if (app.status === 'cancelled') return;
   const cancelledAtIso = cancelledAt.toISOString();
-  const next = list.map((a) =>
-    a.id === applicationId ? { ...a, status: 'cancelled' as const, cancelledAt: cancelledAtIso } : a,
-  );
-  byJob.set(jobId, next);
+  await updateDoc(appRef(jobId, applicationId), {
+    status: 'cancelled',
+    cancelledAt: cancelledAtIso,
+    statusUpdatedAt: serverTimestamp(),
+  });
   const job = getJob(jobId);
   if (job) {
-    const updated = next.find((a) => a.id === applicationId)!;
     const { ensureLateCancelPenalty } = await import('./payments');
-    await ensureLateCancelPenalty(job, updated);
+    await ensureLateCancelPenalty(job, { ...app, status: 'cancelled', cancelledAt: cancelledAtIso });
   }
 }

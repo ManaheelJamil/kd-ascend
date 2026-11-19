@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, Download, Plus, Trash2, UserRound, X } from 'lucide-react';
 import {
   JobApplicationsDownloadModal,
@@ -18,6 +18,7 @@ import { Button, Card, IconButton, cn, ui } from '@/components/ui';
 import {
   applicationStatusLabel,
   getJobApplications,
+  subscribeJobApplications,
   removeJobApplication,
   setApplicationStatus,
   type ApplicationStatus,
@@ -59,6 +60,19 @@ export function JobApplicationsTable({
 }) {
   const toast = useToast();
   const [source, setSource] = useState<JobApplication[]>(() => getJobApplications(jobId));
+
+  // Live from Firestore: changes from this page, other admins and the mobile app show up instantly.
+  useEffect(() => {
+    return subscribeJobApplications(
+      jobId,
+      (list) => {
+        setSource(list);
+        onCountsChange?.();
+      },
+      (e) => toast.error(e.message || 'Could not load applications.'),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
   const [busy, setBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'uid', dir: 1 });
@@ -77,10 +91,8 @@ export function JobApplicationsTable({
     [source],
   );
 
-  const refresh = () => {
-    setSource(getJobApplications(jobId));
-    onCountsChange?.();
-  };
+  // The live listener updates the list; nothing to reload by hand.
+  const refresh = () => undefined;
 
   const rows = useMemo(() => {
     const val = (a: JobApplication): string | number =>
@@ -125,16 +137,14 @@ export function JobApplicationsTable({
           n.delete(application.id);
           return n;
         });
-        setSource(getJobApplications(jobId));
-        onCountsChange?.();
         toast.success('Application removed.');
         return;
       }
       const status: ApplicationStatus = action === 'approve' ? 'approved' : 'rejected';
       await setApplicationStatus(jobId, application.id, status);
-      setSource(getJobApplications(jobId));
-      onCountsChange?.();
       toast.success(`Application ${applicationStatusLabel(status).toLowerCase()} successfully.`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not save the change.');
     } finally {
       setBusy(null);
     }

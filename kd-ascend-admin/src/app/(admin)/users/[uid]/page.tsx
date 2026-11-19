@@ -36,6 +36,7 @@ import {
 } from '@/components/ui';
 import { BlacklistDialog, RejectDialog, RemoveBlacklistDialog } from '@/components/UserDialogs';
 import DocumentReviewModal from '@/components/DocumentReviewModal';
+import UserJobSummary from '@/components/UserJobSummary';
 import { EditContactModal, EditPersonalModal } from '@/components/EditUserModals';
 import { approveUser, listDocuments, subscribeUser, type UserDocument } from '@/lib/users';
 import { displayName, dob, initial, longDay, shortDay, shortId } from '@/lib/format';
@@ -89,15 +90,6 @@ function DocStatus({ status }: { status?: 'verified' | 'rejected' }) {
     <span className="inline-flex items-center gap-1.5 text-[15.8px] font-semibold text-brand">
       <Clock className="size-[18px]" /> Not reviewed
     </span>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[15.8px] text-white">{label}</span>
-      <span className="text-[22.5px] font-bold text-white">{value}</span>
-    </div>
   );
 }
 
@@ -364,27 +356,7 @@ export default function UserDetailsPage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-6 md:gap-[27px]">
-          <div className={cn('rounded-card bg-brand', ui.cardPadLg)}>
-            <h2 className={cn(ui.sectionTitle, 'text-white')}>Summary</h2>
-            <div className="mt-[27px] flex flex-col gap-[22px]">
-              <SummaryRow label="Total Jobs" value="0" />
-              <SummaryRow label="Completed" value="0" />
-              <SummaryRow label="Canceled" value="0" />
-            </div>
-            <div className="my-[26px] h-px bg-white/40" />
-            <div className="flex flex-col gap-[22px]">
-              <SummaryRow label="Total Earnings" value="$0.00" />
-              <SummaryRow label="Total Penalties" value="$0.00" />
-              <SummaryRow label="Net Earnings" value="$0.00" />
-            </div>
-          </div>
-
-          <Card pad="lg">
-            <h2 className={ui.sectionTitle}>Recent Jobs</h2>
-            <div className="mt-6 rounded-card bg-tile px-[18px] py-6 text-center text-[13.5px] text-muted">
-              No jobs yet. Jobs will appear here once the Jobs module is live.
-            </div>
-          </Card>
+          <UserJobSummary uid={user.uid} email={user.email} />
 
           <Card pad="lg">
             <h2 className={ui.sectionTitle}>Account Information</h2>

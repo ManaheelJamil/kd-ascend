@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Check, Clock, DollarSign, MapPin, SquarePen } from 'lucide-react';
@@ -9,11 +9,11 @@ import { JobStatusBadge, JobStatusPicker } from '@/components/JobBits';
 import { JobStatusConfirmDialog } from '@/components/JobDialogs';
 import { useToast } from '@/components/Toast';
 import { Card, FullPageSpinner, PageShell, cn, ui } from '@/components/ui';
-import { applicationStats } from '@/lib/jobApplications';
+import { subscribeJobApplications } from '@/lib/jobApplications';
 import { longDayFromIso, shortDayFromIso } from '@/lib/format';
 import {
-  getJob,
   jobClosePayoutToast,
+  subscribeJob,
   jobStatusLabel,
   updateJobStatus,
   type Job,
@@ -51,27 +51,32 @@ export default function JobDetailPage() {
   const [tab, setTab] = useState<JobTab>('overview');
   const [appCounts, setAppCounts] = useState({ total: 0, pending: 0 });
 
-  const refreshCounts = useCallback(() => {
-    if (id) setAppCounts(applicationStats(id));
-  }, [id]);
-
+  // Job and its application counts, live from Firestore.
   useEffect(() => {
     if (!id) {
       setJob(null);
       return;
     }
-    const found = getJob(id);
-    setJob(found);
-    if (found) setAppCounts(applicationStats(found.id));
+    const offJob = subscribeJob(id, setJob, () => setJob(null));
+    const offApps = subscribeJobApplications(id, (list) =>
+      setAppCounts({ total: list.length, pending: list.filter((a) => a.status === 'pending').length }),
+    );
+    return () => {
+      offJob();
+      offApps();
+    };
   }, [id]);
 
+  // Pick the starting tab once, when the job first loads.
+  const tabChosen = useRef(false);
   useEffect(() => {
-    if (!job) return;
+    if (!job || tabChosen.current) return;
+    tabChosen.current = true;
     const t = new URLSearchParams(window.location.search).get('tab');
     if (t === 'applications') setTab('applications');
     else if (t === 'overview') setTab('overview');
-    else if (job.status === 'open' && applicationStats(job.id).pending > 0) setTab('applications');
-  }, [job]);
+    else if (job.status === 'open' && appCounts.pending > 0) setTab('applications');
+  }, [job, appCounts.pending]);
 
   const goTab = (next: JobTab) => {
     setTab(next);
@@ -224,7 +229,7 @@ export default function JobDetailPage() {
               <span className="text-[13.5px] font-medium text-muted">{slotSummary(job)}</span>
             </div>
           </Card>
-          <JobApplicationsTable jobId={job.id} job={job} showTitle={false} onCountsChange={refreshCounts} />
+          <JobApplicationsTable jobId={job.id} job={job} showTitle={false} />
         </div>
       )}
       <JobStatusConfirmDialog

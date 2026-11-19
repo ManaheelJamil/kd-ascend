@@ -118,10 +118,33 @@ service cloud.firestore {
     match /corporates/{corporateId} {
       allow read, write: if isAdmin();
 
-     
+      // Users restricted from this corporate's jobs.
+      match /blacklistedUsers/{userUid} {
+        allow read, write: if isAdmin();
+      }
     }
 
-    // Counter behind the sequential user IDs (KD01U, KD02U …), managed by the admin dashboard.
+    // Jobs and their applications: admin dashboard only for now
+    // (the mobile app will get read / apply / cancel access with the Jobs screens).
+    match /jobs/{jobId} {
+      allow read, write: if isAdmin();
+
+      match /applications/{applicationId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // The dashboard listens to every job's applications at once (collection group query).
+    match /{path=**}/applications/{applicationId} {
+      allow read: if isAdmin();
+    }
+
+    // Payouts and late-cancel penalties: admin dashboard only.
+    match /paymentTransactions/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Counters behind sequential IDs (users KD01U…, jobs JOB-1001…, payments TXN1…), managed by the admin dashboard.
     match /counters/{counterId} {
       allow read, write: if isAdmin();
     }

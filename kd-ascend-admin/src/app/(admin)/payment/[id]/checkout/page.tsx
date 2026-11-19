@@ -18,13 +18,13 @@ import {
   completePayment,
   downloadPaymentReceipt,
   formatMoney,
-  getPayment,
   normalizePaymentAdjustments,
   paymentCalcLine,
   paymentTotals,
+  subscribePayment,
   type PaymentTransaction,
 } from '@/lib/payments';
-import { getJob } from '@/lib/jobs';
+import { getJob, subscribeJobs } from '@/lib/jobs';
 
 function nameInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -47,14 +47,20 @@ export default function PaymentCheckoutPage() {
   const [payment, setPayment] = useState<PaymentTransaction | null | undefined>(undefined);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, setJobsTick] = useState(0);
 
   useEffect(() => {
     if (!id) {
       setPayment(null);
       return;
     }
-    const t = window.setTimeout(() => setPayment(getPayment(id)), 0);
-    return () => window.clearTimeout(t);
+    // Live: shows "Completed" straight away, also when another admin completes it.
+    const off = subscribePayment(id, setPayment, () => setPayment(null));
+    const offJobs = subscribeJobs(() => setJobsTick((n) => n + 1), () => undefined);
+    return () => {
+      off();
+      offJobs();
+    };
   }, [id]);
 
   const complete = async () => {

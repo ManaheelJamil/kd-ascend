@@ -1,9 +1,26 @@
-/** Placeholder until payment transactions are stored in Firestore. */
+/**
+ * Payment transactions, stored in Firestore: paymentTransactions/{id}.
+ * Rows are only created automatically: a payout per approved applicant when a job is closed,
+ * and a penalty when a member cancels less than 24 hours before the shift. The document id is
+ * built from type + job + application, so the same payout or penalty can never be created twice.
+ */
 
-import { getJobApplications, type JobApplication } from './jobApplications';
+import {
+  doc,
+  getDoc,
+  onSnapshot,
+  collection,
+  runTransaction,
+  serverTimestamp,
+  updateDoc,
+  type Timestamp,
+} from 'firebase/firestore';
+import { auth, db } from './firebase';
+import { applicationsReady, getJobApplications, type JobApplication } from './jobApplications';
 import { assumedHoursFromEventTime, eventStartMs } from './jobSchedule';
 import { getUserPayoutMethodLabel } from './users';
 import { getAllJobs, type Job } from './jobs';
+import { liveStore, todayIso, withoutUndefined } from './live';
 
 export const LATE_CANCEL_PENALTY_AMOUNT = 50;
 const LATE_CANCEL_MS = 24 * 60 * 60 * 1000;
@@ -54,6 +71,9 @@ export type PaymentTransaction = {
   bonus: number;
   deduction: number;
   note: string;
+  createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
+  updatedBy?: string;
 };
 
 export type PaymentInput = {
@@ -111,18 +131,58 @@ export function validatePaymentInput(input: PaymentInput, forVerify: boolean): s
   return null;
 }
 
-/** In-memory until Firestore; rows only appear after a job is closed (see createPayoutsForClosedJob). */
-const store: PaymentTransaction[] = [];
+const paymentsCol = collection(db, 'paymentTransactions');
+const paymentRef = (id: string) => doc(db, 'paymentTransactions', id);
+const adminId = () => auth.currentUser?.email ?? auth.currentUser?.uid ?? 'admin';
+const millis = (t?: Timestamp | null) => (t && typeof t.toMillis === 'function' ? t.toMillis() : Number.MAX_SAFE_INTEGER);
+
+/** All transactions, newest first, kept live. */
+const paymentsStore = liveStore<PaymentTransaction[]>([], (set, fail) =>
+  onSnapshot(
+    paymentsCol,
+    (snap) =>
+      set(
+        snap.docs
+          .map((d) => ({ ...(d.data() as Omit<PaymentTransaction, 'id'>), id: d.id }))
+          .sort((x, y) => millis(y.createdAt) - millis(x.createdAt) || y.txnId.localeCompare(x.txnId)),
+      ),
+    (e) => fail(e),
+  ),
+);
+
+export const paymentsReady = () => paymentsStore.ready();
 
 export function getPaymentTransactions(): PaymentTransaction[] {
-  return [...store];
+  return [...paymentsStore.get()];
+}
+
+export function subscribePaymentTransactions(
+  onData: (list: PaymentTransaction[]) => void,
+  onError?: (e: Error) => void,
+): () => void {
+  return paymentsStore.subscribe((list) => onData([...list]), onError);
 }
 
 export function getPayment(id: string): PaymentTransaction | null {
-  return store.find((t) => t.id === id) ?? null;
+  return paymentsStore.get().find((t) => t.id === id) ?? null;
 }
 
-export function paymentStats(list: PaymentTransaction[] = store): {
+/** Waits for the first snapshot, then returns the transaction (null when it doesn't exist). */
+export async function loadPayment(id: string): Promise<PaymentTransaction | null> {
+  await paymentsStore.ready();
+  return getPayment(id);
+}
+
+/** One transaction, live (null when it doesn't exist). */
+export function subscribePayment(
+  id: string,
+  onData: (t: PaymentTransaction | null) => void,
+  onError?: (e: Error) => void,
+): () => void {
+  return paymentsStore.subscribe((list) => onData(list.find((t) => t.id === id) ?? null), onError);
+}
+
+export function paymentStats(list: PaymentTransaction[] = getPaymentTransactions()): {
   totalPenalties: number;
   totalPayouts: number;
   pendingPayout: number;
@@ -145,58 +205,45 @@ export function formatMoney(amount: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function nextTxnId(): string {
-  const nums = store.map((t) => parseInt(t.txnId.replace(/\D/g, ''), 10)).filter((n) => !Number.isNaN(n));
-  return `TXN${(nums.length ? Math.max(...nums) : 0) + 1}`;
-}
-
-function applyInput(row: PaymentTransaction, input: PaymentInput, status: PaymentStatus): PaymentTransaction {
+function computeFields(input: PaymentInput, status: PaymentStatus) {
   const adj = normalizePaymentAdjustments(input.bonus, input.deduction);
   const inputNorm = { ...input, bonus: adj.bonus, deduction: adj.deduction };
   const { final } = paymentTotals(inputNorm.adjustedHours, inputNorm.hourlyRate, inputNorm.bonus, inputNorm.deduction);
-  return {
-    ...row,
-    ...inputNorm,
-    amount: final,
-    status,
-    lastUpdate: today(),
-  };
+  return { ...inputNorm, amount: final, status, lastUpdate: todayIso() };
 }
 
-function insertPayment(input: PaymentInput, status: PaymentStatus, applicationId?: string): string {
-  const newId = `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  store.unshift(
-    applyInput(
-      {
-        id: newId,
-        txnId: nextTxnId(),
+/** Same payout / penalty for the same application always maps to the same document. */
+function paymentDocId(type: PaymentType, jobId: string, applicationId: string | undefined, who: string): string {
+  const key = applicationId || who || 'unknown';
+  return `${type}_${jobId}_${key}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200);
+}
+
+/**
+ * Creates the transaction unless it already exists (safe to call again and again).
+ * TXN numbers come from counters/paymentTxn. Returns the new id, or null when it already existed.
+ */
+async function insertPayment(input: PaymentInput, status: PaymentStatus, applicationId?: string): Promise<string | null> {
+  const id = paymentDocId(input.type, input.jobId, applicationId, input.userUid || input.userEmail.trim().toLowerCase());
+  const counter = doc(db, 'counters', 'paymentTxn');
+  return runTransaction(db, async (tx) => {
+    const existing = await tx.get(paymentRef(id));
+    if (existing.exists()) return null;
+    const c = await tx.get(counter);
+    const next = ((c.data()?.last as number | undefined) ?? 0) + 1;
+    tx.set(counter, { last: next }, { merge: true });
+    tx.set(
+      paymentRef(id),
+      withoutUndefined({
+        ...computeFields(input, status),
+        txnId: `TXN${next}`,
         applicationId,
-        userUid: '',
-        userName: '',
-        userEmail: '',
-        jobId: '',
-        jobIdLabel: '',
-        type: 'payout',
-        amount: 0,
-        method: 'Bank Transfer',
-        status: 'draft',
-        lastUpdate: today(),
-        assumedHours: 0,
-        hourlyRate: 0,
-        adjustedHours: 0,
-        bonus: 0,
-        deduction: 0,
-        note: '',
-      },
-      input,
-      status,
-    ),
-  );
-  return newId;
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        updatedBy: 'system',
+      }),
+    );
+    return id;
+  });
 }
 
 export function findPaymentForApplication(
@@ -208,7 +255,7 @@ export function findPaymentForApplication(
 ): PaymentTransaction | null {
   const emailNorm = email.trim().toLowerCase();
   return (
-    store.find((t) => {
+    getPaymentTransactions().find((t) => {
       if (t.jobId !== jobId || t.type !== type) return false;
       if (applicationId && t.applicationId === applicationId) return true;
       if (userUid && t.userUid === userUid) return true;
@@ -252,6 +299,7 @@ export async function ensureLateCancelPenalty(job: Job, app: JobApplication): Pr
 
 /** Ensures penalty rows exist for all qualifying cancellations (e.g. on payment list load). */
 export async function syncLateCancelPenalties(): Promise<number> {
+  await Promise.all([applicationsReady(), paymentsStore.ready()]);
   let created = 0;
   for (const job of getAllJobs()) {
     for (const app of getJobApplications(job.id)) {
@@ -267,6 +315,7 @@ export async function syncLateCancelPenalties(): Promise<number> {
  * Idempotent: approved applicants added after close need the job reopened then closed again.
  */
 export async function createPayoutsForClosedJob(job: Job): Promise<string[]> {
+  await Promise.all([applicationsReady(), paymentsStore.ready()]);
   const approved = getJobApplications(job.id).filter((a) => a.status === 'approved');
   const created: string[] = [];
   const assumedHours = assumedHoursFromEventTime(job.eventTime);
@@ -289,31 +338,37 @@ export async function createPayoutsForClosedJob(job: Job): Promise<string[]> {
       deduction: 0,
       note: '',
     };
-    created.push(insertPayment(input, 'draft', app.id));
+    const id = await insertPayment(input, 'draft', app.id);
+    if (id) created.push(id);
   }
   return created;
 }
 
+/** Saves edits to an existing transaction (there is no manual "create payment"). */
 export async function savePayment(id: string, input: PaymentInput, status: PaymentStatus): Promise<string> {
-  const i = store.findIndex((t) => t.id === id);
-  if (i < 0) throw new Error('Transaction not found.');
-  store[i] = applyInput(store[i], input, status);
+  const snap = await getDoc(paymentRef(id));
+  if (!snap.exists()) throw new Error('Transaction not found.');
+  await updateDoc(paymentRef(id), withoutUndefined({ ...computeFields(input, status), updatedAt: serverTimestamp(), updatedBy: adminId() }));
   return id;
 }
 
 export async function completePayment(id: string): Promise<void> {
-  const row = store.find((t) => t.id === id);
-  if (!row) throw new Error('Transaction not found.');
-  if (row.status !== 'pending') throw new Error('Verify the payment before completing it.');
-  row.status = 'completed';
-  row.lastUpdate = today();
+  const snap = await getDoc(paymentRef(id));
+  if (!snap.exists()) throw new Error('Transaction not found.');
+  if ((snap.data() as PaymentTransaction).status !== 'pending') throw new Error('Verify the payment before completing it.');
+  await updateDoc(paymentRef(id), {
+    status: 'completed',
+    lastUpdate: todayIso(),
+    completedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    updatedBy: adminId(),
+  });
 }
 
 export async function updatePaymentStatus(id: string, status: PaymentStatus): Promise<void> {
-  const row = store.find((t) => t.id === id);
-  if (!row) throw new Error('Transaction not found.');
-  row.status = status;
-  row.lastUpdate = today();
+  const snap = await getDoc(paymentRef(id));
+  if (!snap.exists()) throw new Error('Transaction not found.');
+  await updateDoc(paymentRef(id), { status, lastUpdate: todayIso(), updatedAt: serverTimestamp(), updatedBy: adminId() });
 }
 
 /** Verified (pending) or completed → checkout; draft / failed → edit. */

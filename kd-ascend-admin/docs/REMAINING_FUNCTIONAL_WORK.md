@@ -1,3 +1,7 @@
+> **Update (Nov 2026):** Jobs, applications and payments now use Firestore with real-time listeners
+> (`src/lib/live.ts`, `jobs.ts`, `jobApplications.ts`, `payments.ts`), and the rules below are in
+> `mobile-app/firestore.rules`. Still open: the mobile app's Jobs screens (apply / `cancelJobApplication`).
+
 # Remaining functional work (Firebase)
 
 **For:** engineer already on KD Ascend Firebase / admin (+ mobile cancel hook).

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import {
@@ -25,7 +25,7 @@ import {
   cn,
   ui,
 } from '@/components/ui';
-import { getJob } from '@/lib/jobs';
+import { getJob, subscribeJob, type Job } from '@/lib/jobs';
 import {
   formatMoney,
   normalizePaymentAdjustments,
@@ -89,7 +89,15 @@ export function PaymentForm({ payment }: { payment: PaymentTransaction }) {
   const [error, setError] = useState<string | null>(null);
   const locked = payment.status === 'completed' || payment.status === 'failed';
 
-  const selectedJob = useMemo(() => (form.jobId ? getJob(form.jobId) : null), [form.jobId]);
+  // The job this payment belongs to, live (loads in after the payment if needed).
+  const [selectedJob, setSelectedJob] = useState<Job | null>(() => (form.jobId ? getJob(form.jobId) : null));
+  useEffect(() => {
+    if (!form.jobId) {
+      setSelectedJob(null);
+      return;
+    }
+    return subscribeJob(form.jobId, setSelectedJob);
+  }, [form.jobId]);
 
   const patch = (next: Partial<PaymentInput>) => setForm((f) => ({ ...f, ...next }));
   const totals = paymentTotals(form.adjustedHours, form.hourlyRate, form.bonus, form.deduction);

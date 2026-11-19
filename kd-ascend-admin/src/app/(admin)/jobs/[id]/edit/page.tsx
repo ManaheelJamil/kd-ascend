@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { JobForm } from '@/components/JobForm';
 import { FullPageSpinner, PageShell, ui } from '@/components/ui';
-import { getJob, type Job } from '@/lib/jobs';
+import { loadJob, type Job } from '@/lib/jobs';
 
 export default function EditJobPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,8 +16,12 @@ export default function EditJobPage() {
       setJob(null);
       return;
     }
-    const t = window.setTimeout(() => setJob(getJob(id)), 0);
-    return () => window.clearTimeout(t);
+    // Read once: the form keeps what the admin types even if the job changes meanwhile.
+    let alive = true;
+    loadJob(id).then((j) => alive && setJob(j));
+    return () => {
+      alive = false;
+    };
   }, [id]);
 
   if (job === undefined) return <FullPageSpinner />;

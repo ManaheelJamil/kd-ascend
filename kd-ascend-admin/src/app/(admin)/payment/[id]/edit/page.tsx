@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { PaymentForm } from '@/components/PaymentForm';
 import { FullPageSpinner, PageShell, ui } from '@/components/ui';
-import { getPayment, type PaymentTransaction } from '@/lib/payments';
+import { loadPayment, type PaymentTransaction } from '@/lib/payments';
 
 export default function EditPaymentPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,8 +16,12 @@ export default function EditPaymentPage() {
       setPayment(null);
       return;
     }
-    const t = window.setTimeout(() => setPayment(getPayment(id)), 0);
-    return () => window.clearTimeout(t);
+    // Read once: the form keeps what the admin types even if the payment changes meanwhile.
+    let alive = true;
+    loadPayment(id).then((p) => alive && setPayment(p));
+    return () => {
+      alive = false;
+    };
   }, [id]);
 
   if (payment === undefined) return <FullPageSpinner />;
