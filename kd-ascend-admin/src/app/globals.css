@@ -25,6 +25,11 @@
   --radius-control: 13.5px;
 
   --shadow-brand: 0 4px 6px rgb(255 125 77 / 0.3), 0 10px 15px rgb(255 125 77 / 0.3);
+
+  /* Shared admin layout & type scale (keep in sync with ui.tsx helpers) */
+  --spacing-page: 27px;
+  --spacing-card: 22.5px;
+  --spacing-card-lg: 28px;
 }
 
 html,

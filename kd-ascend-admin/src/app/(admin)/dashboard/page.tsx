@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Building2, Clock, TrendingDown, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { Card, ErrorNote, FullPageSpinner, cn } from '@/components/ui';
+import { Card, ErrorNote, FullPageSpinner, PageShell, SectionTitle, cn, ui } from '@/components/ui';
 import UsersTable from '@/components/UsersTable';
 import SignupsChart from '@/components/SignupsChart';
 import { useUsersData } from '@/context/UsersData';
@@ -45,7 +45,7 @@ function StatCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="block rounded-card border border-line bg-white p-[22.5px] transition hover:border-brand/40">
+    <Link href={href} className={cn('block rounded-card border border-line bg-white transition hover:border-brand/40', ui.cardPad)}>
       <div className="flex items-start justify-between gap-2">
         <span className={cn('grid size-[45px] place-items-center rounded-control', iconClass)}>
           <Icon className="size-[22px]" strokeWidth={1.8} />
@@ -99,7 +99,7 @@ export default function DashboardPage() {
   if (loading) return <FullPageSpinner />;
 
   return (
-    <div className="flex flex-col gap-[27px]">
+    <PageShell>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <div className="grid gap-[22.5px] sm:grid-cols-2 xl:grid-cols-4">
@@ -118,12 +118,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-[27px] xl:grid-cols-2">
-        <Card className="p-[22.5px]">
+        <Card pad="default">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-ink">Sign-ups Overview</h2>
-              <p className="text-[13.5px] text-muted">Last 6 months</p>
-            </div>
+            <SectionTitle title="Sign-ups Overview" subtitle="Last 6 months" size="sm" />
             <Trend value={monthChange} suffix="%" />
           </div>
           <div className="mt-4">
@@ -131,9 +128,8 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-[22.5px]">
-          <h2 className="text-lg font-bold text-ink">Users by Status</h2>
-          <p className="text-[13.5px] text-muted">Where every account stands</p>
+        <Card pad="default">
+          <SectionTitle title="Users by Status" subtitle="Where every account stands" size="sm" />
           <div className="mt-6 flex flex-col gap-[18px]">
             {statusBars.map((s) => {
               const pct = counts.total ? Math.round((s.value / counts.total) * 100) : 0;
@@ -159,17 +155,14 @@ export default function DashboardPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between gap-3 p-[22.5px]">
-          <div>
-            <h2 className="text-lg font-bold text-ink">Recent Users</h2>
-            <p className="text-[13.5px] text-muted">Latest registrations</p>
-          </div>
+        <div className={cn('flex items-center justify-between gap-3', ui.cardPad)}>
+          <SectionTitle title="Recent Users" subtitle="Latest registrations" size="sm" />
           <Link href="/users" className="inline-flex items-center gap-1 text-[13.5px] font-semibold text-brand hover:underline">
             View All <ArrowRight className="size-4" />
           </Link>
         </div>
         <UsersTable users={users.slice(0, 5)} selectable={false} emptyText="No users yet. New sign-ups from the app appear here." />
       </Card>
-    </div>
+    </PageShell>
   );
 }

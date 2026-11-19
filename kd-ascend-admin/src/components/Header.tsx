@@ -66,7 +66,7 @@ export default function Header({ onMenu }: { onMenu: () => void }) {
           onChange={(e) => change(e.target.value)}
           placeholder="Search pending approvals..."
           aria-label="Search pending approvals"
-          className="h-11 w-full rounded-control bg-search pr-10 pl-10 text-[15px] outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20 md:h-[65px] md:rounded-card md:pr-14 md:pl-[63px] md:text-lg"
+          className="h-11 w-full rounded-control bg-search pr-10 pl-10 text-[15.8px] outline-none placeholder:text-[#0a0a0a]/50 focus:ring-2 focus:ring-brand/20 md:h-[52px] md:rounded-card md:pr-14 md:pl-[50px]"
         />
         {q ? (
           <button

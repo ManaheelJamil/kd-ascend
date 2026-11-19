@@ -1,7 +1,7 @@
 'use client';
 
-import CorporateForm from '@/components/CorporateForm';
+import { CorporateForm } from '@/components/CorporateForm';
 
 export default function AddCorporatePage() {
-  return <CorporateForm />;
+  return <CorporateForm mode="create" />;
 }

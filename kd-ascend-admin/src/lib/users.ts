@@ -1,7 +1,9 @@
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -13,7 +15,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, getSecondaryAuth, storage } from './firebase';
 import { firestoreFileUrl, isFirestoreFile, saveFileToFirestore } from './fileStore';
 import { resubmitLabels } from './resubmit';
-import type { Payout, PersonalInfo, StoredFile, UserDoc } from './types';
+import type { AccountStatus, Payout, PersonalInfo, StoredFile, UserDoc } from './types';
 
 const usersCol = collection(db, 'users');
 const userRef = (uid: string) => doc(db, 'users', uid);
@@ -56,6 +58,49 @@ export function subscribeUser(uid: string, onData: (user: UserDoc | null) => voi
     (snap) => onData(snap.exists() ? ({ ...(snap.data() as UserDoc), uid: snap.id }) : null),
     onError,
   );
+}
+
+const adminsCol = collection(db, 'admins');
+
+/** Emails listed on admin accounts — hide list actions for matching user rows. */
+export function subscribeAdminEmails(
+  onData: (emails: Set<string>) => void,
+  onError?: (e: Error) => void,
+): Unsubscribe {
+  return onSnapshot(
+    adminsCol,
+    (snap) => {
+      const emails = new Set<string>();
+      for (const d of snap.docs) {
+        const email = (d.data().email as string | undefined)?.trim().toLowerCase();
+        if (email) emails.add(email);
+      }
+      onData(emails);
+    },
+    (e) => onError?.(e as Error),
+  );
+}
+
+export function isAdminEmailUser(user: UserDoc, adminEmails: Set<string>): boolean {
+  const email = user.email?.trim().toLowerCase();
+  return !!email && adminEmails.has(email);
+}
+
+export function payoutMethodLabel(payout?: Payout | null): string {
+  if (!payout) return 'Bank Transfer';
+  return payout.method === 'paynow' ? 'PayNow' : 'Bank Transfer';
+}
+
+/** For auto-created payout rows when a job closes. */
+export async function getUserPayoutMethodLabel(userUid: string): Promise<string> {
+  if (!userUid) return 'Bank Transfer';
+  const snap = await getDoc(userRef(userUid));
+  if (!snap.exists()) return 'Bank Transfer';
+  return payoutMethodLabel((snap.data() as UserDoc).payout);
+}
+
+export async function deleteUser(uid: string): Promise<void> {
+  await deleteDoc(userRef(uid));
 }
 
 export const approveUser = async (uid: string) => {
@@ -107,6 +152,23 @@ export const blacklistUser = async (uid: string, reason: string, fields: string[
 };
 
 /** "They will be able to access the platform again" → back to an approved account. */
+/** Quick status change from the users table (reject/blacklist use a generic admin note). */
+export async function setUserAccountStatus(uid: string, status: AccountStatus): Promise<void> {
+  if (status === 'approved') {
+    await approveUser(uid);
+    return;
+  }
+  if (status === 'rejected') {
+    await rejectUser(uid, 'Status updated by admin.');
+    return;
+  }
+  if (status === 'blacklisted') {
+    await blacklistUser(uid, 'Status updated by admin.');
+    return;
+  }
+  await updateDoc(userRef(uid), { status, updatedAt: serverTimestamp() });
+}
+
 export const removeFromBlacklist = async (uid: string) => {
   await updateDoc(userRef(uid), {
     status: 'approved',
@@ -266,6 +328,81 @@ export async function createUser(input: NewUserInput): Promise<string> {
     approvedBy: adminId(),
   });
   return uid;
+}
+
+export type UpdateUserInput = {
+  uid: string;
+  previousEmail: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  address: string;
+  nric: string;
+  gender: string;
+  nationality: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  documents: { label: string; file?: File; existing?: StoredFile }[];
+  payout: Payout;
+};
+
+async function patchUserAuth(uid: string, email?: string, password?: string) {
+  const admin = auth.currentUser;
+  if (!admin) throw new Error('Not signed in');
+  const body: { uid: string; email?: string; password?: string } = { uid };
+  const nextEmail = email?.trim().toLowerCase();
+  if (nextEmail) body.email = nextEmail;
+  if (password && password.length >= 8) body.password = password;
+  if (!body.email && !body.password) return;
+
+  const res = await fetch('/api/admin/users/update-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await admin.getIdToken()}` },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    const err = new Error(json.error || 'Could not update login credentials.');
+    if (res.status === 409) (err as { code?: string }).code = 'auth/email-already-in-use';
+    throw err;
+  }
+}
+
+/** Updates an existing user profile (Firestore) and login email/password when provided. */
+export async function updateUser(input: UpdateUserInput): Promise<void> {
+  const stored: StoredFile[] = [];
+  for (const d of input.documents) {
+    if (d.file) stored.push(await uploadFile(input.uid, 'documents', d.file, d.label));
+    else if (d.existing) stored.push({ ...d.existing, ...(d.label.trim() ? { label: d.label.trim() } : {}) });
+  }
+  const [identityDocument, ...extra] = stored;
+
+  const profile: PersonalInfo = {
+    fullName: input.fullName.trim(),
+    nric: input.nric.trim().toUpperCase(),
+    gender: input.gender,
+    nationality: input.nationality,
+    dateOfBirth: input.dateOfBirth,
+    placeOfBirth: input.placeOfBirth || input.nationality,
+    address: input.address.trim(),
+  };
+
+  const nextEmail = input.email.trim().toLowerCase();
+  const emailChanged = nextEmail !== input.previousEmail.trim().toLowerCase();
+  if (emailChanged || (input.password && input.password.length >= 8)) {
+    await patchUserAuth(input.uid, emailChanged ? nextEmail : undefined, input.password);
+  }
+
+  await updateDoc(userRef(input.uid), {
+    email: nextEmail,
+    phone: input.phone,
+    profile,
+    identityDocument: identityDocument ?? null,
+    documents: extra,
+    payout: input.payout,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 function emptyProfile(): PersonalInfo {

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { AccountStatus } from '@/lib/types';
-import { STATUS_LABEL } from '@/lib/format';
+import { ACCOUNT_STATUSES, STATUS_LABEL } from '@/lib/format';
 
 // Teaches tailwind-merge the custom tokens from globals.css so later classes override earlier ones.
 const twMerge = extendTailwindMerge({
@@ -16,11 +16,58 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return twMerge(classes.filter(Boolean).join(' '));
 }
 
+/** Shared layout / typography class bundles — use across all dashboard pages. */
+export const ui = {
+  pageStack: 'flex flex-col gap-[27px]',
+  cardPad: 'p-4 sm:p-[22.5px]',
+  cardPadLg: 'p-5 sm:p-[28px]',
+  pageHeading: 'text-[22px] leading-7 font-bold text-ink sm:text-[27px] sm:leading-8',
+  pageSubheading: 'mt-1 text-[14px] text-muted sm:text-[15.8px]',
+  sectionTitle: 'text-[20.25px] font-bold leading-8 text-ink',
+  sectionTitleSm: 'text-lg font-bold text-ink',
+  sectionLead: 'text-[13.5px] text-muted',
+  fieldLabel: 'text-[13.5px] font-medium text-muted',
+  body: 'text-[15.8px] font-medium text-ink',
+  bodyMuted: 'text-[15.8px] text-muted',
+  tableHead: 'text-[13.5px] font-semibold text-muted',
+  toolbarControl: 'h-[46px] text-[15.8px] text-muted sm:h-[52px]',
+  /** Outlined secondary action on long forms (pair with primary Save). */
+  formCancel: 'h-[51px] min-w-[130px] rounded-card px-7 font-semibold',
+  /** Sidebar nav rows — same scale as page body, not xl:text-lg. */
+  navItem:
+    'flex h-[46px] items-center gap-3 rounded-control px-4 text-[15.8px] font-medium transition sm:h-[48px] sm:px-[18px]',
+} as const;
+
 /* ---------- Layout ---------- */
 
-export function Card({ className, accent, children }: { className?: string; accent?: boolean; children: React.ReactNode }) {
+export function PageShell({
+  children,
+  className,
+  variant = 'default',
+}: {
+  children: React.ReactNode;
+  className?: string;
+  variant?: 'default' | 'detail';
+}) {
   return (
-    <div className={cn('rounded-card border bg-white', accent ? 'border-brand' : 'border-line', className)}>{children}</div>
+    <div className={cn(variant === 'detail' ? 'flex flex-col gap-6 md:gap-[27px]' : ui.pageStack, className)}>{children}</div>
+  );
+}
+
+export function Card({
+  className,
+  accent,
+  pad = 'none',
+  children,
+}: {
+  className?: string;
+  accent?: boolean;
+  pad?: 'none' | 'default' | 'lg';
+  children: React.ReactNode;
+}) {
+  const padding = pad === 'default' ? ui.cardPad : pad === 'lg' ? ui.cardPadLg : '';
+  return (
+    <div className={cn('rounded-card border bg-white', accent ? 'border-brand' : 'border-line', padding, className)}>{children}</div>
   );
 }
 
@@ -28,10 +75,103 @@ export function PageTitle({ title, subtitle, children }: { title: string; subtit
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-[22px] leading-7 font-bold text-ink sm:text-[27px] sm:leading-8">{title}</h1>
-        {subtitle ? <p className="mt-1 text-[14px] text-muted sm:text-[15.8px]">{subtitle}</p> : null}
+        <h1 className={ui.pageHeading}>{title}</h1>
+        {subtitle ? <p className={ui.pageSubheading}>{subtitle}</p> : null}
       </div>
       {children}
+    </div>
+  );
+}
+
+export function SectionTitle({
+  title,
+  subtitle,
+  className,
+  size = 'md',
+}: {
+  title: string;
+  subtitle?: string;
+  className?: string;
+  size?: 'md' | 'sm';
+}) {
+  return (
+    <div className={className}>
+      <h2 className={size === 'sm' ? ui.sectionTitleSm : ui.sectionTitle}>{title}</h2>
+      {subtitle ? <p className={cn('mt-1', ui.sectionLead)}>{subtitle}</p> : null}
+    </div>
+  );
+}
+
+export function DetailPageHeader({
+  title,
+  subtitle,
+  back,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  back: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-[18px]">
+        {back}
+        <div className="min-w-0">
+          <h1 className={ui.pageHeading}>{title}</h1>
+          {subtitle ? <p className={ui.pageSubheading}>{subtitle}</p> : null}
+        </div>
+      </div>
+      {actions}
+    </div>
+  );
+}
+
+export function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon?: React.ElementType;
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="flex w-full min-w-0 max-w-full items-start gap-[13px]">
+      {Icon ? <Icon className="mt-0.5 size-[22px] shrink-0 text-brand" strokeWidth={1.8} /> : null}
+      <div className="min-w-0 flex-1">
+        <p className={ui.fieldLabel}>{label}</p>
+        <p className={cn('mt-0.5 whitespace-normal wrap-anywhere', ui.body)}>{value || '—'}</p>
+      </div>
+    </div>
+  );
+}
+
+export function ToolbarSearch({
+  value,
+  onChange,
+  placeholder,
+  className,
+  icon: Icon,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  className?: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <div className={cn('relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]', className)}>
+      <Icon className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" strokeWidth={1.8} />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={cn(
+          'w-full rounded-control border border-field bg-white pr-4 pl-[50px] outline-none placeholder:text-[#0a0a0a]/50 focus:border-brand focus:ring-2 focus:ring-brand/15',
+          ui.toolbarControl,
+        )}
+      />
     </div>
   );
 }
@@ -42,7 +182,7 @@ type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger' | 'success' | 'n
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-brand text-white shadow-brand hover:brightness-105',
-  outline: 'border border-field bg-white text-muted hover:bg-page',
+  outline: 'border border-field bg-white text-ink shadow-sm hover:bg-page',
   ghost: 'text-muted hover:bg-page',
   danger: 'bg-danger text-white hover:brightness-105',
   success: 'bg-success text-white hover:brightness-110',
@@ -96,7 +236,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       {...rest}
-      className={cn('grid size-9 place-items-center rounded-control transition hover:bg-page sm:size-[31px]', className)}
+      className={cn('grid size-9 place-items-center rounded-control transition hover:bg-page', className)}
     >
       {children}
     </button>
@@ -130,11 +270,14 @@ export function Field({
   );
 }
 
-const control =
-  'w-full rounded-control border border-field bg-white px-[18px] text-[15.8px] text-ink outline-none transition placeholder:text-[#0a0a0a]/50 focus:border-brand focus:ring-2 focus:ring-brand/15';
+/** Shared text field styles (also used by corporate forms). */
+export const control =
+  'w-full rounded-control border border-field bg-white px-[18px] text-[15.8px] font-normal text-ink outline-none transition placeholder:text-[#0a0a0a]/50 focus:border-brand focus:ring-2 focus:ring-brand/15';
+
+export const controlHeight = 'h-[52px]';
 
 export function TextInput({ className, invalid, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
-  return <input {...rest} className={cn(control, 'h-[53px]', invalid && 'border-danger', className)} />;
+  return <input {...rest} className={cn(control, controlHeight, invalid && 'border-danger', className)} />;
 }
 
 /** Native date picker with the design's orange calendar badge. Value is yyyy-mm-dd. */
@@ -144,7 +287,7 @@ export function DateInput({ className, invalid, ...rest }: Omit<React.InputHTMLA
       <input
         type="date"
         {...rest}
-        className={cn(control, 'relative h-[53px] pr-12', !rest.value && 'text-[#0a0a0a]/50', invalid && 'border-danger', className)}
+        className={cn(control, 'relative', controlHeight, 'pr-12', !rest.value && 'text-[#0a0a0a]/50', invalid && 'border-danger', className)}
       />
       <span className="pointer-events-none absolute top-1/2 right-4 grid size-[21px] -translate-y-1/2 place-items-center rounded-[5px] bg-brand">
         <Calendar className="size-3.5 text-white" strokeWidth={2.5} />
@@ -168,7 +311,7 @@ export function Select({
     <div className="relative">
       <select
         {...rest}
-        className={cn(control, 'h-[53px] appearance-none pr-12', !rest.value && 'text-[#0a0a0a]/50', invalid && 'border-danger', className)}
+        className={cn(control, controlHeight, 'appearance-none pr-12', !rest.value && 'text-[#0a0a0a]/50', invalid && 'border-danger', className)}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -205,6 +348,48 @@ export function StatusBadge({ status, className }: { status: AccountStatus; clas
     >
       {STATUS_LABEL[status] ?? status}
     </span>
+  );
+}
+
+/** Inline user status control — same pill pattern as job/corporate list tables. */
+export function UserStatusPicker({
+  value,
+  onChange,
+  busy,
+  className,
+}: {
+  value: AccountStatus;
+  onChange: (s: AccountStatus) => void;
+  busy?: boolean;
+  className?: string;
+}) {
+  const minW = value === 'under_review' || value === 'blacklisted' ? 'min-w-[7.75rem]' : 'min-w-[7.25rem]';
+  return (
+    <label
+      className={cn(
+        'relative inline-flex h-[34px] shrink-0 items-center whitespace-nowrap rounded-full pr-8 pl-3.5 text-[13.5px] font-medium',
+        minW,
+        BADGE[value] ?? BADGE.incomplete,
+        busy && 'opacity-60',
+        className,
+      )}
+    >
+      <span>{STATUS_LABEL[value] ?? value}</span>
+      <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+      <select
+        aria-label="User status"
+        value={value}
+        disabled={busy}
+        onChange={(e) => onChange(e.target.value as AccountStatus)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {ACCOUNT_STATUSES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

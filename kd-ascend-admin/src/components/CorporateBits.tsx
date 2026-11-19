@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, ChevronDown, Mail, MapPin, Phone, SquarePen, Tag, Trash2, Users } from 'lucide-react';
-import { Button, Modal, cn } from './ui';
+import { useToast } from '@/components/Toast';
+import { Button, Modal, cn, control, controlHeight, ui } from './ui';
 import {
   CORPORATE_STATUSES,
   INDUSTRIES,
@@ -38,11 +39,28 @@ export function CorporateStatusBadge({ status, className }: { status: CorporateS
 }
 
 /** The "Active ▾" pill in the details header: changes the status straight away. */
-export function StatusPicker({ value, onChange, busy }: { value: CorporateStatus; onChange: (s: CorporateStatus) => void; busy?: boolean }) {
+export function StatusPicker({
+  value,
+  onChange,
+  busy,
+  className,
+}: {
+  value: CorporateStatus;
+  onChange: (s: CorporateStatus) => void;
+  busy?: boolean;
+  className?: string;
+}) {
   return (
-    <label className={cn('relative inline-flex h-[38px] items-center rounded-full pr-9 pl-4 text-[15.8px] font-medium', BADGE[value], busy && 'opacity-60')}>
+    <label
+      className={cn(
+        'relative inline-flex h-[34px] min-w-[7.25rem] shrink-0 items-center whitespace-nowrap rounded-full pr-8 pl-3.5 text-[13.5px] font-medium',
+        BADGE[value],
+        busy && 'opacity-60',
+        className,
+      )}
+    >
       <span>{corporateStatusLabel(value)}</span>
-      <ChevronDown className="pointer-events-none absolute right-3 size-4" />
+      <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
       <select
         aria-label="Corporate status"
         value={value}
@@ -74,7 +92,7 @@ export function SectionHeading({ tone, title, children }: { tone: 'navy' | 'oran
         >
           {tone === 'navy' ? <Building2 className="size-[22px]" strokeWidth={1.8} /> : <Users className="size-[22px]" strokeWidth={1.8} />}
         </span>
-        <h2 className="text-[20.3px] font-semibold text-ink">{title}</h2>
+        <h2 className={cn(ui.sectionTitle, 'font-semibold')}>{title}</h2>
       </div>
       {children}
     </div>
@@ -104,8 +122,8 @@ export function InfoTile({
         <Icon className="size-5" strokeWidth={1.8} />
       </span>
       <div className="min-w-0">
-        <p className="text-[15.8px] text-muted">{label}</p>
-        <p className="mt-0.5 text-lg font-medium break-words text-ink">{value || '—'}</p>
+        <p className={ui.fieldLabel}>{label}</p>
+        <p className={cn('mt-0.5 whitespace-normal wrap-anywhere', ui.body)}>{value || '—'}</p>
       </div>
     </div>
   );
@@ -135,10 +153,7 @@ const statusLabels = CORPORATE_STATUSES.map((s) => s.label);
 export const labelToStatus = (label: string): CorporateStatus =>
   CORPORATE_STATUSES.find((s) => s.label === label)?.value ?? 'pending';
 
-/* ---------- Form fields (Figma: label 15.8 Medium ink, 52px inputs, 17.5 radius, 18px text) ---------- */
-
-const corpControl =
-  'h-[52px] w-full rounded-card border border-field bg-white px-[18px] text-lg font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-[#0a0a0a]/50 focus:border-brand focus:ring-2 focus:ring-brand/15';
+/* ---------- Form fields (shared with ui.tsx TextInput) ---------- */
 
 export function CorpField({
   label,
@@ -155,7 +170,7 @@ export function CorpField({
 }) {
   return (
     <label className={cn('flex flex-col gap-3', className)}>
-      <span className="text-[15.8px] font-medium text-ink">
+      <span className={ui.fieldLabel}>
         {label}
         {required ? ' *' : ''}
       </span>
@@ -174,7 +189,7 @@ export function CorpInput({
   return (
     <div className="relative">
       {Icon ? <Icon className="pointer-events-none absolute top-1/2 left-[18px] size-[18px] -translate-y-1/2 text-muted" /> : null}
-      <input {...rest} className={cn(corpControl, Icon && 'pl-[45px]', invalid && 'border-danger', className)} />
+      <input {...rest} className={cn(control, controlHeight, Icon && 'pl-[45px]', invalid && 'border-danger', className)} />
     </div>
   );
 }
@@ -197,7 +212,7 @@ export function CorpSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(corpControl, 'appearance-none pr-12 font-normal', !value && 'text-[#0a0a0a]/50', invalid && 'border-danger')}
+        className={cn(control, controlHeight, 'appearance-none pr-12', !value && 'text-[#0a0a0a]/50', invalid && 'border-danger')}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -230,7 +245,7 @@ export function CompanyFields({
 }) {
   const grid = layout === 'grid';
   return (
-    <div className={cn('grid gap-y-[18px]', grid && 'gap-x-5 md:grid-cols-2')}>
+    <div className={cn('grid gap-[27px]', grid && 'md:grid-cols-2')}>
       <CorpField label="Name" required error={errors.name}>
         <CorpInput placeholder="Tech Corp Inc." value={value.name} onChange={(e) => onChange({ name: e.target.value })} invalid={!!errors.name} />
       </CorpField>
@@ -273,7 +288,7 @@ export function ContactFields({
 }) {
   const grid = layout === 'grid';
   return (
-    <div className={cn('grid gap-y-[18px]', grid && 'gap-x-[26px] md:grid-cols-2')}>
+    <div className={cn('grid gap-[27px]', grid && 'md:grid-cols-2')}>
       <CorpField label="Contact Person Name" required error={errors.contactName} className={grid ? 'md:col-span-2' : undefined}>
         <CorpInput
           placeholder="John Smith"
@@ -311,7 +326,7 @@ export function SaveCancel({ onCancel, busy, height = 47 }: { onCancel: () => vo
   const h = height === 56 ? 'h-14' : 'h-[47px]';
   return (
     <div className={cn('grid grid-cols-2', height === 56 ? 'gap-[18px]' : 'gap-[19px]')}>
-      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card text-lg font-medium')}>
+      <Button type="button" variant="outline" onClick={onCancel} className={cn(h, 'rounded-card font-semibold')}>
         Cancel
       </Button>
       <Button type="submit" loading={busy} className={cn(h, 'rounded-card text-lg font-medium')}>
@@ -466,6 +481,7 @@ export function EditSectionModal({
 }
 
 export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporate: Corporate | null; onClose: () => void; onDone?: () => void }) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!corporate) return null;
@@ -474,6 +490,7 @@ export function DeleteCorporateDialog({ corporate, onClose, onDone }: { corporat
     setError(null);
     try {
       await deleteCorporate(corporate.id);
+      toast.success(`${corporate.name} deleted.`);
       onDone?.();
       onClose();
     } catch (e) {

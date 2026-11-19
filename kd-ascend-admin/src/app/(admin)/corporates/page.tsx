@@ -4,15 +4,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Building2, Check, ChevronDown, Download, Filter, Search, SquarePen, Trash2 } from 'lucide-react';
-import { Avatar, Button, Card, ErrorNote, FullPageSpinner, IconButton, PageTitle, cn } from '@/components/ui';
-import { CorporateStatusBadge, DeleteCorporateDialog } from '@/components/CorporateBits';
-import { CORPORATE_STATUSES, corporateStatusLabel, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
+import { Avatar, Button, Card, ErrorNote, IconButton, PageShell, PageTitle, Spinner, ToolbarSearch, cn, ui } from '@/components/ui';
+import { DeleteCorporateDialog, StatusPicker } from '@/components/CorporateBits';
+import { CorporateStatusConfirmDialog } from '@/components/JobDialogs';
+import { useToast } from '@/components/Toast';
+import { CORPORATE_STATUSES, corporateStatusLabel, setCorporateStatus, subscribeCorporates, type Corporate, type CorporateStatus } from '@/lib/corporates';
 import { isoDay } from '@/lib/format';
 
-type SortKey = 'name' | 'contact' | 'status' | 'added';
+type SortKey = 'name' | 'email' | 'contact' | 'status' | 'added';
 
 export default function CorporatesPage() {
   const router = useRouter();
+  const toast = useToast();
   const [list, setList] = useState<Corporate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,27 +25,48 @@ export default function CorporatesPage() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'added', dir: -1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toDelete, setToDelete] = useState<Corporate | null>(null);
+  const [statusBusy, setStatusBusy] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{ corporate: Corporate; next: CorporateStatus } | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
-  useEffect(
-    () =>
-      subscribeCorporates(
-        (l) => {
-          setList(l);
-          setError(null);
-          setLoading(false);
-        },
-        (e) => {
-          setError(
-            (e as { code?: string }).code === 'permission-denied'
-              ? 'Permission denied while reading corporates. Publish the latest Firestore rules.'
-              : e.message,
-          );
-          setLoading(false);
-        },
-      ),
-    [],
-  );
+  const requestStatusChange = (corporate: Corporate, next: CorporateStatus) => {
+    if (next === corporate.status) return;
+    setStatusConfirm({ corporate, next });
+  };
+
+  const applyStatusChange = async () => {
+    if (!statusConfirm) return;
+    const { corporate, next } = statusConfirm;
+    setStatusBusy(corporate.id);
+    try {
+      await setCorporateStatus(corporate.id, next);
+      toast.success(`Corporate status updated to ${corporateStatusLabel(next)}.`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update corporate status.');
+      throw e;
+    } finally {
+      setStatusBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    const unsub = subscribeCorporates(
+      (l) => {
+        setList(l);
+        setError(null);
+        setLoading(false);
+      },
+      (e) => {
+        setError(
+          (e as { code?: string }).code === 'permission-denied'
+            ? 'Permission denied while reading corporates. Publish the latest Firestore rules.'
+            : e.message,
+        );
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -66,11 +90,13 @@ export default function CorporatesPage() {
     const val = (c: Corporate): string | number =>
       sort.key === 'name'
         ? c.name.toLowerCase()
-        : sort.key === 'contact'
-          ? (c.contactPhone || '').toLowerCase()
-          : sort.key === 'status'
-            ? c.status
-            : (c.createdAt?.toMillis?.() ?? Date.now());
+        : sort.key === 'email'
+          ? (c.contactEmail || '').toLowerCase()
+          : sort.key === 'contact'
+            ? (c.contactPhone || '').toLowerCase()
+            : sort.key === 'status'
+              ? c.status
+              : (c.createdAt?.toMillis?.() ?? Date.now());
     return filtered.sort((a, b) => (val(a) < val(b) ? -sort.dir : val(a) > val(b) ? sort.dir : 0));
   }, [list, q, status, sort]);
 
@@ -94,7 +120,7 @@ export default function CorporatesPage() {
   };
 
   const SortHead = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => (
-    <th className={cn('px-[18px] text-[13.5px] font-semibold text-muted', className)}>
+    <th className={cn('px-[18px]', ui.tableHead, className)}>
       <button
         type="button"
         onClick={() => setSort((s) => ({ key: k, dir: s.key === k ? (s.dir === 1 ? -1 : 1) : 1 }))}
@@ -106,13 +132,11 @@ export default function CorporatesPage() {
     </th>
   );
 
-  if (loading) return <FullPageSpinner />;
-
   return (
-    <div className="flex flex-col gap-[27px]">
-      <PageTitle title="Corporates Management">
+    <PageShell>
+      <PageTitle title="Corporates Management" subtitle="Manage corporate partners and their accounts">
         <Link href="/corporates/new">
-          <Button className="h-[45px] rounded-card px-5">
+          <Button>
             <Building2 className="size-[18px]" />
             Add Corporate
           </Button>
@@ -121,18 +145,10 @@ export default function CorporatesPage() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <Card className="flex flex-wrap items-center gap-[14px] p-4 sm:p-[28px]">
-        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
-          <Search className="pointer-events-none absolute top-1/2 left-[18px] size-5 -translate-y-1/2 text-muted" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search corporate"
-            className="h-[46px] w-full rounded-card border border-field pr-4 pl-[50px] text-base outline-none sm:h-[52px] sm:text-lg placeholder:text-[#0a0a0a]/50 focus:border-brand"
-          />
-        </div>
+      <Card pad="lg" className="flex flex-wrap items-center gap-[14px]">
+        <ToolbarSearch value={q} onChange={setQ} placeholder="Search corporate" icon={Search} />
         <div className="relative" ref={filterRef}>
-          <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={() => setFilterOpen((o) => !o)}>
+          <Button variant="outline" className={ui.toolbarControl} onClick={() => setFilterOpen((o) => !o)}>
             <Filter className="size-5" />
             {status === 'all' ? 'Filter' : corporateStatusLabel(status)}
           </Button>
@@ -156,13 +172,19 @@ export default function CorporatesPage() {
             </div>
           ) : null}
         </div>
-        <Button variant="outline" className="h-[46px] rounded-card px-4 text-base sm:h-[52px] sm:px-5 sm:text-lg" onClick={exportCsv}>
+        <Button variant="outline" className={cn(ui.toolbarControl, 'px-5')} onClick={exportCsv}>
           <Download className="size-5" />
           Export{selected.size ? ` (${selected.size})` : ''}
         </Button>
       </Card>
 
       <Card className="overflow-hidden md:min-h-[400px]">
+        {loading ? (
+          <div className="grid min-h-[280px] place-items-center py-16">
+            <Spinner className="size-8" />
+          </div>
+        ) : (
+          <>
         {/* Phones: one card per corporate instead of the wide table. */}
         <ul className="divide-y divide-line md:hidden">
           {rows.length === 0 ? (
@@ -180,7 +202,9 @@ export default function CorporatesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-[15px] font-semibold text-ink">{c.name}</p>
-                    <CorporateStatusBadge status={c.status} />
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
+                    </span>
                   </div>
                   {c.contactEmail ? <p className="truncate text-[13px] text-muted">{c.contactEmail}</p> : null}
                   <div className="mt-1 flex items-center justify-between gap-2">
@@ -210,7 +234,7 @@ export default function CorporatesPage() {
           <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
             <thead>
               <tr className="h-16 border-b border-line bg-page">
-                <th className="relative w-[32%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
+                <th className="relative w-[25%] px-[18px] pl-[51px] text-[13.5px] font-semibold text-muted">
                   <input
                     type="checkbox"
                     aria-label="Select all"
@@ -227,11 +251,11 @@ export default function CorporatesPage() {
                     <ChevronDown className={cn('size-5', sort.key === 'name' && sort.dir === -1 && 'rotate-180')} strokeWidth={1.8} />
                   </button>
                 </th>
-                <th className="w-[11%] px-[18px] text-[13.5px] font-semibold text-muted">Profile</th>
+                <SortHead k="email" label="Email" className="w-[15%]" />
                 <SortHead k="contact" label="Contact" className="w-[15%]" />
-                <SortHead k="status" label="Status" className="w-[14%]" />
-                <SortHead k="added" label="Added Date" className="w-[14%]" />
-                <th className="w-[14%] px-[18px] pr-[18px] text-right text-[13.5px] font-semibold text-muted">Actions</th>
+                <SortHead k="status" label="Status" className="w-[15%]" />
+                <SortHead k="added" label="Added Date" className="w-[15%]" />
+                <th className="w-[15%] px-[18px] pr-[18px] text-right text-[13.5px] font-semibold text-muted">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -273,15 +297,14 @@ export default function CorporatesPage() {
                         }
                         className="absolute top-1/2 left-[19px] size-5 -translate-y-1/2"
                       />
-                      <p className="truncate text-[15.8px] font-medium text-ink">{c.name}</p>
-                      {c.contactEmail ? <p className="truncate text-[13.5px] text-muted">{c.contactEmail}</p> : null}
+                      <span className="block truncate text-[15.8px] font-medium text-ink">{c.name}</span>
                     </td>
-                    <td className="px-[18px]">
-                      <Avatar letter={(c.name || '?').charAt(0).toUpperCase()} />
+                    <td className="truncate px-1.5 text-[13.5px] text-muted" title={c.contactEmail}>
+                      {c.contactEmail || '—'}
                     </td>
-                    <td className="truncate px-[18px] text-[13.5px] text-muted">{c.contactPhone || '—'}</td>
-                    <td className="px-[18px]">
-                      <CorporateStatusBadge status={c.status} />
+                    <td className="truncate px-1.5 text-[13.5px] text-muted">{c.contactPhone || '—'}</td>
+                    <td className="min-w-[124px] px-[18px]" onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker value={c.status} busy={statusBusy === c.id} onChange={(s) => requestStatusChange(c, s)} />
                     </td>
                     <td className="px-[18px] text-[13.5px] text-muted">{isoDay(c.createdAt)}</td>
                     <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
@@ -305,9 +328,18 @@ export default function CorporatesPage() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </Card>
 
       <DeleteCorporateDialog corporate={toDelete} onClose={() => setToDelete(null)} />
-    </div>
+      <CorporateStatusConfirmDialog
+        corporate={statusConfirm?.corporate ?? null}
+        nextStatus={statusConfirm?.next ?? null}
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={applyStatusChange}
+      />
+    </PageShell>
   );
 }

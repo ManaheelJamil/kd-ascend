@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ExternalLink, FileText, Info, X } from 'lucide-react';
-import { Button, Modal, Spinner } from './ui';
+import { Button, Modal, Spinner, cn, ui } from './ui';
 import { fileUrl, setDocumentStatus, type UserDocument } from '@/lib/users';
 import { fileSize } from '@/lib/format';
 import type { UserDoc } from '@/lib/types';
@@ -64,8 +64,8 @@ export default function DocumentReviewModal({
     <Modal open onClose={onClose} className="max-w-[959px] overflow-hidden">
       <div className="flex items-start justify-between border-b border-field px-6 py-5">
         <div className="min-w-0">
-          <h2 className="truncate text-xl font-semibold text-[#1e293b]">{document.label}</h2>
-          <p className="truncate text-sm text-[#64748b]">
+          <h2 className={cn('truncate', ui.sectionTitleSm)}>{document.label}</h2>
+          <p className={cn('truncate', ui.sectionLead)}>
             {file.name}
             {file.size ? ` · ${fileSize(file.size)}` : ''}
           </p>
@@ -81,13 +81,13 @@ export default function DocumentReviewModal({
             <Info className="size-4" />
           </span>
           <div>
-            <p className="text-sm font-medium text-[#1e293b]">Please review the document below</p>
-            <p className="text-xs text-[#64748b]">Approve it if it is clear and matches the user’s details.</p>
+            <p className={cn('text-sm font-medium text-ink')}>Please review the document below</p>
+            <p className={ui.sectionLead}>Approve it if it is clear and matches the user’s details.</p>
           </div>
         </div>
       ) : null}
 
-      <div className="grid min-h-[420px] place-items-center bg-[#f8fafc] p-6">
+      <div className="grid min-h-[420px] place-items-center bg-page p-6">
         {loading ? (
           <Spinner />
         ) : url ? (
