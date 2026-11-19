@@ -1,89 +1,136 @@
 # Remaining functional work (Firebase)
 
-**For:** engineer already on KD Ascend Firebase / admin.
+**For:** engineer already on KD Ascend Firebase / admin (+ mobile cancel hook).
 
-**Scope:** Make **Jobs** and **job applications** persist and update live. **Payment** stays on the in-memory stub in `src/lib/payments.ts` — no Firestore work for payment in this pass.
-
-**UI is done.** Only replace the two placeholder libs (and rules/indexes) so refresh and second sessions see the same data.
+**UI is done.** Replace in-memory libs with Firestore, rules, and indexes so refresh and second sessions see the same data. **Keep the public TypeScript APIs** exported from the libs below unless noted.
 
 ---
 
-## 1. What we shipped (admin UI — needs Firestore)
+## Overview
 
-| Area | Routes / components | Data today |
-|------|---------------------|------------|
-| Jobs list | `app/(admin)/jobs/page.tsx` | `subscribeJobs`, `updateJobStatus` → **memory** (`jobs.ts`) |
-| Job create/edit | `jobs/new`, `jobs/[id]/edit`, `JobForm.tsx` | `createJob`, `updateJob`, `getJob` |
-| Job detail | `jobs/[id]/page.tsx` | `getJob`, status confirm → `JobStatusConfirmDialog` |
+| Area | Lib today | Firestore target |
+|------|-----------|------------------|
+| Jobs | `src/lib/jobs.ts` (memory) | `jobs/{jobId}` |
+| Applications | `src/lib/jobApplications.ts` (memory) | `jobs/{jobId}/applications/{applicationId}` |
+| Payments | `src/lib/payments.ts` (memory) | `paymentTransactions/{paymentId}` (name flexible) |
+| Users / corporates / admins | Already Firestore | No change |
+
+**Recommended order:** (1) jobs + applications + rules, (2) payments + hooks on job close and app cancel, (3) mobile `cancelJobApplication`.
+
+---
+
+## 1. Admin UI map (what to wire)
+
+### Jobs & applications
+
+| Area | Routes / components | Lib calls |
+|------|---------------------|-----------|
+| Jobs list | `jobs/page.tsx` | `subscribeJobs`, `updateJobStatus` → confirm `JobStatusConfirmDialog` |
+| Job create/edit | `jobs/new`, `jobs/[id]/edit`, `JobForm.tsx` | `createJob`, `updateJob` |
+| Job detail | `jobs/[id]/page.tsx` | `getJob`, `updateJobStatus` (toast includes payout count when closing) |
 | Delete job | `JobBits.tsx` | `deleteJob` |
-| Applications tab | `JobApplicationsTable.tsx` | `getJobApplications`, `setApplicationStatus`, `removeJobApplication` |
-| Add applicant | `JobAddApplicantModal.tsx` | `addJobApplication`, `findApplicationTimeConflict` + live **users** + **corporate blacklist** (Firestore) |
-| CSV export | `JobApplicationsDownloadModal.tsx` | reads same application rows + job fields |
-| Corp. job counts | corporate detail overview | `activeJobs` / `completedJobs` on `corporates` — UI expects updates when jobs exist |
-| Users list tweaks | `UsersTable`, `UserDialogs` | **Already Firestore** (`users`, `admins`) — no new collections |
+| Applications tab | `JobApplicationsTable.tsx` | `getJobApplications` → prefer **`subscribeJobApplications`** |
+| Add applicant | `JobAddApplicantModal.tsx` | `addJobApplication`, `findApplicationTimeConflict` + Firestore **users** + corporate blacklist |
+| CSV export | `JobApplicationsDownloadModal.tsx` | subscribed application rows |
 
-**Still placeholder on user profile:** `users/[uid]/page.tsx` job summary (“0 jobs”) — optional follow-up once applications have `userUid`.
+### Payments (no manual “create payment”)
+
+| Area | Routes / components | Lib calls |
+|------|---------------------|-----------|
+| List | `payment/page.tsx` | `syncLateCancelPenalties` on mount, **`subscribePaymentTransactions`** (replace `getPaymentTransactions` + one-shot sync), `updatePaymentStatus` → `PaymentStatusConfirmDialog` |
+| Edit | `payment/[id]/edit/page.tsx` | `getPayment`, `savePayment` (update only) |
+| Checkout | `payment/[id]/checkout/page.tsx` | `completePayment`, receipt download |
+| `/payment/new` | redirects to list | — |
+
+**Still placeholder:** `users/[uid]/page.tsx` job summary counts — optional once applications use real `userUid`.
 
 ---
 
-## 2. Code to implement (keep the public API)
+## 2. `src/lib/jobs.ts`
 
-Mirror `src/lib/corporates.ts` (collection + `onSnapshot` + writes).
+**Keep exports:** `Job`, `JobInput`, `JobStatus`, `JOB_STATUSES`, `jobStatusLabel`, `emptyJobInput`, `jobToInput`, `getJob`, `getAllJobs`, `subscribeJobs`, `createJob`, `updateJob`, `updateJobStatus`, `deleteJob`, `JobStatusUpdateResult`, `jobClosePayoutToast`.
 
-### `src/lib/jobs.ts`
+**Target collection:** `jobs/{jobId}` (auto id). Display `jobId` via `counters/jobId` (same pattern as corporates).
 
-Keep exports/types: `Job`, `JobInput`, `JobStatus`, `JOB_STATUSES`, `jobStatusLabel`, `emptyJobInput`, `jobToInput`, `getJob`, `getAllJobs`, `subscribeJobs`, `createJob`, `updateJob`, `updateJobStatus`, `deleteJob`.
+**Job status → payouts (must preserve):** When status transitions **to `closed`** (via `updateJobStatus` or `updateJob`), call `createPayoutsForClosedJob` from `payments.ts` (today: dynamic import to avoid cycles). On failure, **revert** job status and surface error. Return `{ createdPayouts: number }` for UI toast.
 
-**Today:** dummy array + fake `subscribeJobs` timeout.
+**Corporate counts (optional):** Bump `corporates/{id}.activeJobs` / `completedJobs` on status changes.
 
-**Target:**
+Mirror `src/lib/corporates.ts` for `subscribeJobs` + writes.
 
-- Collection `jobs/{jobId}` (auto id).
-- `subscribeJobs` → `onSnapshot` on `jobs`, sort e.g. by `createdAt` desc.
-- `jobId` display code `JOB-####` → use existing `counters/jobId` pattern (rules already allow `counters/*` for admins).
-- On create/update/status/delete: optional but UI-friendly — bump `corporates/{corporateId}.activeJobs` / `completedJobs` (define: e.g. `open`|`filled` vs `closed`).
+---
 
-`getJob` / `getAllJobs`: job detail and **time-conflict** logic still call these; either keep one-shot `getDocs` or refactor `jobApplications.ts` to query Firestore directly for conflicts (preferred at scale).
+## 3. `src/lib/jobApplications.ts`
 
-### `src/lib/jobApplications.ts`
+**Keep exports:** `JobApplication`, `ApplicationStatus`, `applicationStatusLabel`, `getJobApplications`, **`subscribeJobApplications`** (add; use in table + job detail counts), `applicationStats`, `findApplicationTimeConflict`, `addJobApplication`, `setApplicationStatus`, `removeJobApplication`, **`cancelJobApplication`**, `AddApplicantInput`.
 
-Keep exports/types: `JobApplication`, `ApplicationStatus`, `applicationStatusLabel`, `getJobApplications`, `applicationStats`, `findApplicationTimeConflict`, `addJobApplication`, `setApplicationStatus`, `removeJobApplication`, `AddApplicantInput`.
+**Storage:** subcollection `jobs/{jobId}/applications/{applicationId}`.
 
-**Storage:** `jobs/{jobId}/applications/{applicationId}` (or top-level `applications` with `jobId` — subcollection matches job-centric UI).
-
-**Add `subscribeJobApplications(jobId, onData, onError)`** and use it in `JobApplicationsTable` + job detail counts (today everything re-reads memory; after refresh applications are empty unless subscribed).
-
-**Field map** (same as `JobApplication` type):
+### Field map
 
 | Field | Notes |
 |--------|--------|
-| `userUid` | Real Firestore user id — **required** for new rows (conflict checks ignore seed rows with empty `userUid`) |
-| `uid` | Member/display code (`kdUserId` / `memberId` / short uid from picker) |
+| `userUid` | Firestore user id — **required** for new rows |
+| `uid` | Member/display code |
 | `name`, `email`, `phone` | Snapshot when added |
-| `status` | `pending` \| `approved` \| `rejected` |
-| `doneBefore` | Shown in table/CSV; new rows default `'00'` — can later = count of user’s past approved gigs |
+| `status` | `pending` \| `approved` \| `rejected` \| **`cancelled`** |
+| `doneBefore` | Display count in table/CSV |
+| **`cancelledAt`** | ISO timestamp when member cancels from app (penalty rule below) |
+
+### Business rules (preserve in lib or Cloud Function)
+
+1. Add applicant: user `status === 'approved'`; global/corporate blacklist; duplicate + schedule conflict (`jobSchedule.ts` overlap on `pending`/`approved` on other jobs).
+2. Approve / reject / delete: confirm modals in UI; persist.
+3. **`cancelJobApplication(jobId, applicationId, cancelledAt?)`** — set `status: 'cancelled'`, `cancelledAt`, then call `ensureLateCancelPenalty` (payments). **Mobile** should call the same write path (client or callable).
 
 ---
 
-## 3. Business rules (must match current TS — implement in lib or rules)
+## 4. `src/lib/payments.ts`
 
-All in `jobApplications.ts` + `JobAddApplicantModal.tsx` today; preserve on Firestore:
+**Keep exports:** types, `paymentTotals`, `validatePaymentInput`, `savePayment` (update only — no manual create), `completePayment`, `updatePaymentStatus`, `getPayment`, `getPaymentTransactions` or replace with **`subscribePaymentTransactions`**, `createPayoutsForClosedJob`, `ensureLateCancelPenalty`, `syncLateCancelPenalties`, `findPaymentForApplication`, `LATE_CANCEL_PENALTY_AMOUNT` (50), helpers (`paymentDetailHref`, receipt download, etc.).
 
-1. **Add applicant:** only users with `status === 'approved'` (modal uses live `users`).
-2. **Global blacklist:** `status === 'blacklisted'` → blocked (user doc).
-3. **Corporate blacklist:** `corporates/{job.corporateId}/blacklistedUsers/{uid}` → blocked (already Firestore; **rules must allow read** — see §4).
-4. **Duplicate on same job:** same `userUid`, or same email (case-insensitive), or same member `uid` string.
-5. **Schedule conflict:** same `eventDate` and overlapping `eventTime` on **another** job where this user has application `pending` or `approved`. Parser: `src/lib/jobSchedule.ts` (`9:00 AM – 5:00 PM` style).
-6. **Approve / reject / delete:** confirm modals already wired; just persist `status` or delete doc.
-7. **CSV:** no API change — exports whatever is in the subscribed list.
+**Today:** in-memory `store[]` (no seed rows). Rows only appear from automation below.
+
+### When rows are created (no admin “add payment”)
+
+| Trigger | Type | Initial status | Dedup key |
+|---------|------|----------------|-----------|
+| Job status → **`closed`** | `payout` per **approved** application | `draft` | same `jobId` + `applicationId` + type `payout` |
+| Member **`cancelled`** and cancel **&lt; 24h before shift start** | `penalty` ($50 default) | `draft` | same `jobId` + `applicationId` + type `penalty` |
+
+- **Payout prefills:** hours from `assumedHoursFromEventTime`, rate from `parseHourlyRate(job.salary)`, method from `users/{uid}.payout` (`getUserPayoutMethodLabel`).
+- **Penalty prefills:** `1 hr × $50`, note text for late cancel; **job status irrelevant**.
+- **`syncLateCancelPenalties`:** list page runs this to backfill penalties from existing cancelled applications (safe idempotent scan).
+
+**Late cancel rule:** `isLateJobCancellation(job, cancelledAt)` — compare `cancelledAt` to shift start from `eventStartMs(eventDate, eventTime)` in `jobSchedule.ts`; penalty if cancel is before start and within 24h.
+
+**Admin flow:** draft → edit → verify → `pending` → checkout → `completePayment` → `completed`. Table status changes use **`PaymentStatusConfirmDialog`** (`JobDialogs.tsx`).
+
+### Suggested Firestore document (`paymentTransactions/{id}`)
+
+| Field | Type | Notes |
+|--------|------|--------|
+| `txnId` | string | `TXN####` — use `counters/paymentTxn` or similar |
+| `applicationId` | string? | Link to application doc |
+| `userUid`, `userName`, `userEmail` | string | |
+| `jobId` | string | Internal job doc id |
+| `jobIdLabel` | string | Display `JOB-####` |
+| `type` | string | `payout` \| `penalty` |
+| `amount` | number | Final after hours/rate/bonus/deduction |
+| `method` | string | `Bank Transfer` \| `PayNow` |
+| `status` | string | `draft` \| `pending` \| `completed` \| `failed` |
+| `lastUpdate` | string or timestamp | yyyy-mm-dd in UI today |
+| `assumedHours`, `hourlyRate`, `adjustedHours`, `bonus`, `deduction`, `note` | numbers/string | Same as `PaymentInput` |
+
+**Writes:** Prefer **transaction** when closing a job (status + batch payout creates) and when cancelling an application (application update + optional penalty doc).
+
+**Implement `subscribePaymentTransactions`** on the collection sorted by `lastUpdate` desc (or `createdAt`); payment list page should subscribe instead of only `useState(getPaymentTransactions())`.
 
 ---
 
-## 4. Firestore rules (`mobile-app/firestore.rules`)
+## 5. Firestore rules (`mobile-app/firestore.rules`)
 
-**Required fixes:**
-
-1. **Corporate blacklist** — UI already writes here; nested rule missing today:
+### Corporates (unchanged — ensure nested blacklist exists)
 
 ```javascript
 match /corporates/{corporateId} {
@@ -95,7 +142,7 @@ match /corporates/{corporateId} {
 }
 ```
 
-2. **Jobs + applications** (admin-only for this milestone):
+### Jobs + applications (admin for this milestone)
 
 ```javascript
 match /jobs/{jobId} {
@@ -107,41 +154,68 @@ match /jobs/{jobId} {
 }
 ```
 
-Mobile job browse / self-apply = later; don’t widen rules until product says so.
+Later: member read/apply and **`cancelJobApplication`** may need `allow update` on own application doc only.
 
-**Out of scope:** `paymentTransactions` — payment module stays mock.
+### Payments (admin-only for now)
 
----
+```javascript
+match /paymentTransactions/{paymentId} {
+  allow read, write: if isAdmin();
+}
+```
 
-## 5. Indexes you’ll likely need
-
-Firestore will prompt with console links. Plan for:
-
-- Collection group **`applications`**: `userUid` + `status` (time-conflict scan across jobs).
-- **`jobs`**: filters on list page (`status`, dates) if you query server-side.
-
----
-
-## 6. Done when
-
-- [ ] Create/edit job survives browser refresh; second admin sees it live.
-- [ ] Add applicant from real `users` survives refresh; blacklist + conflict errors still work.
-- [ ] Approve/reject/delete application persists; empty state when none.
-- [ ] Job status change + delete job persist (confirm modals unchanged).
-- [ ] Corporate blacklist tab still works (rules fix).
-- [ ] CSV download still works on live data.
-- [ ] Payment page still works on dummy data (unchanged).
+Mobile “my payouts” = later; don’t widen until product says so.
 
 ---
 
-## 7. File pointer
+## 6. Indexes
+
+Firestore console will prompt. Plan for:
+
+- Collection group **`applications`**: `userUid` + `status` (conflict scan).
+- **`jobs`**: list filters (`status`, `eventDate`) if server-side.
+- **`paymentTransactions`**: `jobId` + `applicationId` + `type` (dedup), list sort `lastUpdate` desc, filters on `status` / `type`.
+
+---
+
+## 7. Done when
+
+### Jobs & applications
+
+- [ ] Create/edit job survives refresh; `subscribeJobs` updates list live.
+- [ ] Applications subscribe on job detail; add/approve/reject/delete/cancel persist.
+- [ ] Time conflict + blacklist rules still match TS.
+- [ ] Closing job from list or detail persists and returns payout count toast (Firestore creates payout drafts).
+
+### Payments
+
+- [ ] Payment list survives refresh; live subscribe.
+- [ ] Close job → draft **payout** rows for approved apps (idempotent).
+- [ ] Cancel application &lt; 24h before shift → draft **penalty** row (idempotent); works while job still **open**.
+- [ ] Edit / verify / checkout / complete + table status change with confirm modal persist.
+- [ ] No route creates payments manually (`savePayment` requires existing id).
+
+### Mobile (follow-up)
+
+- [ ] App calls `cancelJobApplication` (or equivalent Firestore write) with `cancelledAt` when user cancels a booked shift.
+
+---
+
+## 8. File pointer
 
 | Replace / extend | Reference pattern |
 |------------------|-------------------|
 | `src/lib/jobs.ts` | `src/lib/corporates.ts` |
-| `src/lib/jobApplications.ts` | `src/lib/corporateBlacklist.ts` (subcollection) |
+| `src/lib/jobApplications.ts` | subcollection reads/writes like `corporateBlacklist.ts` |
+| `src/lib/payments.ts` | `corporates.ts` + hooks called from jobs/applications |
 | Rules | `mobile-app/firestore.rules` |
 
-**Do not touch** `src/lib/payments.ts` for this task.
+**UI standards:** `DASHBOARD_UI_GUIDE.md` (tables, confirm modals, payment summary actions in `PaymentBits.tsx`).
 
-**UI standards** (layout, tables, modals, toasts): see `DASHBOARD_UI_GUIDE.md`.
+---
+
+## 9. Cycles / imports
+
+- `jobs.ts` → dynamic `import('./payments')` on close (keep when moving to Firestore).
+- `jobApplications.ts` → dynamic `import('./payments')` on cancel.
+- `payments.ts` imports `getJobApplications`, `getAllJobs`, `users` (payout method) — avoid `jobs.ts` importing `payments` at module top level.

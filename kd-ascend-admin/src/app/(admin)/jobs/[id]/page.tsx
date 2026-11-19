@@ -11,7 +11,14 @@ import { useToast } from '@/components/Toast';
 import { Card, FullPageSpinner, PageShell, cn, ui } from '@/components/ui';
 import { applicationStats } from '@/lib/jobApplications';
 import { longDayFromIso, shortDayFromIso } from '@/lib/format';
-import { getJob, jobStatusLabel, updateJobStatus, type Job, type JobStatus } from '@/lib/jobs';
+import {
+  getJob,
+  jobClosePayoutToast,
+  jobStatusLabel,
+  updateJobStatus,
+  type Job,
+  type JobStatus,
+} from '@/lib/jobs';
 
 type JobTab = 'overview' | 'applications';
 
@@ -84,9 +91,15 @@ export default function JobDetailPage() {
     if (!job || !statusConfirm || statusConfirm === job.status) return;
     setStatusBusy(true);
     try {
-      await updateJobStatus(job.id, statusConfirm);
+      const { createdPayouts } = await updateJobStatus(job.id, statusConfirm);
       setJob({ ...job, status: statusConfirm });
-      toast.success(`Job status updated to ${jobStatusLabel(statusConfirm)}.`);
+      const base = `Job status updated to ${jobStatusLabel(statusConfirm)}.`;
+      toast.success(
+        statusConfirm === 'closed' ? jobClosePayoutToast(base, createdPayouts) : base,
+      );
+      setStatusConfirm(null);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update job status.');
     } finally {
       setStatusBusy(false);
     }

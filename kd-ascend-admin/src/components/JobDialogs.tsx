@@ -7,6 +7,13 @@ import { applicationStatusLabel, type JobApplication } from '@/lib/jobApplicatio
 import { corporateStatusLabel, type Corporate, type CorporateStatus } from '@/lib/corporates';
 import { STATUS_LABEL, displayName } from '@/lib/format';
 import { jobStatusLabel, type Job, type JobStatus } from '@/lib/jobs';
+import {
+  formatMoney,
+  paymentStatusLabel,
+  paymentTypeLabel,
+  type PaymentStatus,
+  type PaymentTransaction,
+} from '@/lib/payments';
 import type { AccountStatus, UserDoc } from '@/lib/types';
 
 function DialogHeader({
@@ -230,6 +237,57 @@ export function CorporateStatusConfirmDialog({
           Are you sure you want to change <b className="font-semibold text-ink">{corporate.name}</b> from{' '}
           <b className="font-semibold text-ink">{corporateStatusLabel(fromStatus)}</b> to{' '}
           <b className="font-semibold text-ink">{corporateStatusLabel(nextStatus)}</b>?
+        </p>
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        <div className="mt-6 flex gap-3">
+          <Button variant="primary" size="lg" className="flex-1" loading={busy} onClick={run}>
+            Update status
+          </Button>
+          <Button variant="outline" size="lg" onClick={onClose} className="font-medium">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export function PaymentStatusConfirmDialog({
+  transaction,
+  nextStatus,
+  open,
+  onClose,
+  onConfirm,
+}: {
+  transaction: PaymentTransaction | null;
+  nextStatus: PaymentStatus | null;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const { busy, error, run, setError } = useConfirmAction(onClose, onConfirm);
+  useEffect(() => {
+    if (open) setError(null);
+  }, [open]);
+
+  if (!transaction || !nextStatus || nextStatus === transaction.status) return null;
+  const fromStatus = transaction.status;
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="p-5 sm:p-8">
+        <DialogHeader
+          tone="brand"
+          icon={<Check className="size-6" />}
+          title="Update payment status"
+          subtitle="This changes how the transaction appears and what actions are available"
+        />
+        <p className="mt-[17px] text-lg text-muted">
+          Are you sure you want to change <b className="font-semibold text-ink">{transaction.txnId}</b> (
+          {paymentTypeLabel(transaction.type)} · {formatMoney(transaction.amount)} to{' '}
+          <b className="font-semibold text-ink">{transaction.userName}</b>) from{' '}
+          <b className="font-semibold text-ink">{paymentStatusLabel(fromStatus)}</b> to{' '}
+          <b className="font-semibold text-ink">{paymentStatusLabel(nextStatus)}</b>?
         </p>
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
         <div className="mt-6 flex gap-3">

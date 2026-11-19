@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, SquarePen } from 'lucide-react';
 import { PaymentStatusPicker, PaymentTypeCell } from '@/components/PaymentBits';
 import { cn, ui } from '@/components/ui';
-import { formatMoney, paymentStatusLabel, type PaymentStatus, type PaymentTransaction } from '@/lib/payments';
+import { formatMoney, paymentDetailHref, paymentStatusLabel, type PaymentStatus, type PaymentTransaction } from '@/lib/payments';
 
 type SortKey = 'txnId' | 'user' | 'jobId' | 'type' | 'amount' | 'method' | 'status' | 'lastUpdate';
 
@@ -89,7 +89,7 @@ export function PaymentsTable({
           rows.map((t) => (
             <li
               key={t.id}
-              onClick={() => router.push(`/users/${t.userUid}`)}
+              onClick={() => router.push(paymentDetailHref(t.id, t.status))}
               className="flex cursor-pointer items-start gap-3 px-4 py-3.5 active:bg-page"
             >
               <input
@@ -113,7 +113,16 @@ export function PaymentsTable({
                 </p>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <PaymentTypeCell type={t.type} />
-                  <span className="text-[12.5px] text-muted">{t.lastUpdate}</span>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-[12.5px] text-muted">{t.lastUpdate}</span>
+                    <Link
+                      href={paymentDetailHref(t.id, t.status)}
+                      aria-label="Open payment"
+                      className="grid size-[31px] place-items-center rounded-control text-muted hover:bg-page hover:text-ink"
+                    >
+                      <SquarePen className="size-[18px]" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </li>
@@ -168,7 +177,7 @@ export function PaymentsTable({
               rows.map((t) => (
                 <tr
                   key={t.id}
-                  onClick={() => router.push(`/users/${t.userUid}`)}
+                  onClick={() => router.push(paymentDetailHref(t.id, t.status))}
                   className="h-[69px] cursor-pointer border-b border-line last:border-b-0 hover:bg-page/70"
                 >
                   <td className="relative px-[18px] pl-[51px]">
@@ -200,9 +209,9 @@ export function PaymentsTable({
                   <td className="px-[18px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       <Link
-                        href={`/jobs/${t.jobId}`}
-                        aria-label="View job"
-                        title="View job"
+                        href={paymentDetailHref(t.id, t.status)}
+                        aria-label="Open payment"
+                        title="Open payment"
                         className="grid size-[31px] place-items-center rounded-control text-muted transition hover:bg-page hover:text-ink"
                       >
                         <SquarePen className="size-[18px]" />

@@ -1,12 +1,15 @@
 /** Placeholder until job applications are stored in Firestore. */
 
 import { eventSlotOverlaps } from './jobSchedule';
-import { getAllJobs, type Job } from './jobs';
+import { getAllJobs, getJob, type Job } from './jobs';
 
-export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 export function applicationStatusLabel(status: ApplicationStatus): string {
-  return status === 'pending' ? 'Pending' : status === 'approved' ? 'Approved' : 'Rejected';
+  if (status === 'pending') return 'Pending';
+  if (status === 'approved') return 'Approved';
+  if (status === 'rejected') return 'Rejected';
+  return 'Cancelled';
 }
 
 export type JobApplication = {
@@ -20,6 +23,8 @@ export type JobApplication = {
   phone: string;
   status: ApplicationStatus;
   doneBefore: string;
+  /** When the member cancelled from the app (ISO). Used for late-cancel penalty. */
+  cancelledAt?: string;
 };
 
 type SeedRow = Omit<JobApplication, 'id'>;
@@ -79,8 +84,9 @@ const APPLICATIONS_BY_JOB: Record<string, SeedRow[]> = {
       name: 'Alex Tan',
       email: 'alex.tan@gmail.com',
       phone: '+65 8333 4455',
-      status: 'approved',
+      status: 'cancelled',
       doneBefore: '02',
+      cancelledAt: '2026-02-19T22:00:00.000Z',
     },
     {
       userUid: '',
@@ -206,6 +212,22 @@ export function getJobApplications(jobId: string): JobApplication[] {
   return [...(byJob.get(jobId) ?? [])];
 }
 
+/** Jobs where this user appears on the application list (mobile apply or admin add). */
+export function getJobsForApplicantUser(userUid: string, email?: string): Job[] {
+  const emailNorm = email?.trim().toLowerCase() ?? '';
+  const jobs: Job[] = [];
+  for (const job of getAllJobs()) {
+    const apps = getJobApplications(job.id);
+    const onList = apps.some(
+      (a) =>
+        (userUid && a.userUid === userUid) ||
+        (emailNorm && a.email.trim().toLowerCase() === emailNorm),
+    );
+    if (onList) jobs.push(job);
+  }
+  return jobs;
+}
+
 export function applicationStats(jobId: string): { total: number; pending: number } {
   const list = getJobApplications(jobId);
   return { total: list.length, pending: list.filter((a) => a.status === 'pending').length };
@@ -290,4 +312,27 @@ export async function removeJobApplication(jobId: string, applicationId: string)
     throw new Error('Application not found.');
   }
   byJob.set(jobId, next);
+}
+
+/** Member cancelled from the app; late cancel (under 24h before shift) creates a penalty row in payments. */
+export async function cancelJobApplication(
+  jobId: string,
+  applicationId: string,
+  cancelledAt: Date = new Date(),
+): Promise<void> {
+  const list = getJobApplications(jobId);
+  const app = list.find((a) => a.id === applicationId);
+  if (!app) throw new Error('Application not found.');
+  if (app.status === 'cancelled') return;
+  const cancelledAtIso = cancelledAt.toISOString();
+  const next = list.map((a) =>
+    a.id === applicationId ? { ...a, status: 'cancelled' as const, cancelledAt: cancelledAtIso } : a,
+  );
+  byJob.set(jobId, next);
+  const job = getJob(jobId);
+  if (job) {
+    const updated = next.find((a) => a.id === applicationId)!;
+    const { ensureLateCancelPenalty } = await import('./payments');
+    await ensureLateCancelPenalty(job, updated);
+  }
 }

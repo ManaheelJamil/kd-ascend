@@ -28,6 +28,7 @@ const BADGE: Record<ApplicationStatus, string> = {
   pending: 'bg-brand/10 text-brand',
   approved: 'bg-success/10 text-success',
   rejected: 'bg-danger/10 text-danger',
+  cancelled: 'bg-navy/10 text-navy',
 };
 
 function ApplicationStatusBadge({ status }: { status: ApplicationStatus }) {

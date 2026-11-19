@@ -219,16 +219,60 @@ export async function createJob(input: JobInput, status: JobStatus): Promise<str
   return id;
 }
 
-export async function updateJob(id: string, input: JobInput, status: JobStatus): Promise<void> {
+export type JobStatusUpdateResult = { createdPayouts: number };
+
+export function jobClosePayoutToast(baseMessage: string, createdPayouts: number): string {
+  if (createdPayouts === 0) return `${baseMessage} No approved applicants — no payout drafts created.`;
+  return `${baseMessage} Created ${createdPayouts} payout draft${createdPayouts === 1 ? '' : 's'}.`;
+}
+
+async function payoutsOnJobClose(id: string): Promise<number> {
+  const job = getJob(id);
+  if (!job) throw new Error('Job not found.');
+  try {
+    const { createPayoutsForClosedJob } = await import('./payments');
+    const ids = await createPayoutsForClosedJob(job);
+    return ids.length;
+  } catch {
+    throw new Error('Job closed but payouts could not be created.');
+  }
+}
+
+export async function updateJob(id: string, input: JobInput, status: JobStatus): Promise<JobStatusUpdateResult> {
+  const prev = jobs.find((j) => j.id === id);
+  if (!prev) throw new Error('Job not found.');
   jobs = jobs.map((j) =>
     j.id === id
       ? { ...j, ...input, requirements: input.requirements.map((r) => r.trim()).filter(Boolean), status }
       : j,
   );
+  if (status === 'closed' && prev.status !== 'closed') {
+    try {
+      const createdPayouts = await payoutsOnJobClose(id);
+      return { createdPayouts };
+    } catch (e) {
+      jobs = jobs.map((j) => (j.id === id ? { ...j, status: prev.status } : j));
+      throw e;
+    }
+  }
+  return { createdPayouts: 0 };
 }
 
-export async function updateJobStatus(id: string, status: JobStatus): Promise<void> {
+export async function updateJobStatus(id: string, status: JobStatus): Promise<JobStatusUpdateResult> {
+  const prev = jobs.find((j) => j.id === id);
+  if (!prev) throw new Error('Job not found.');
+  const priorStatus = prev.status;
   jobs = jobs.map((j) => (j.id === id ? { ...j, status } : j));
+  if (status === 'closed' && priorStatus !== 'closed') {
+    try {
+      const createdPayouts = await payoutsOnJobClose(id);
+      return { createdPayouts };
+    } catch (e) {
+      jobs = jobs.map((j) => (j.id === id ? { ...j, status: priorStatus } : j));
+      throw e;
+    }
+  }
+  return { createdPayouts: 0 };
 }
 
 export async function deleteJob(id: string): Promise<void> {

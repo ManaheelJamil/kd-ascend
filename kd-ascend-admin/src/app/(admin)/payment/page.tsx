@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Download, Filter, Search, X } from 'lucide-react';
+import { PaymentStatusConfirmDialog } from '@/components/JobDialogs';
 import { PaymentsTable } from '@/components/PaymentsTable';
 import { useToast } from '@/components/Toast';
 import { Button, Card, PageShell, PageTitle, cn, ui } from '@/components/ui';
@@ -9,6 +10,7 @@ import {
   PAYMENT_STATUSES,
   formatMoney,
   getPaymentTransactions,
+  syncLateCancelPenalties,
   paymentStats,
   paymentStatusLabel,
   paymentTypeLabel,
@@ -58,9 +60,16 @@ export default function PaymentPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [statusBusy, setStatusBusy] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{ transaction: PaymentTransaction; next: PaymentStatus } | null>(
+    null,
+  );
   const filterRef = useRef<HTMLDivElement>(null);
 
   const stats = useMemo(() => paymentStats(list), [list]);
+
+  useEffect(() => {
+    void syncLateCancelPenalties().then(() => setList(getPaymentTransactions()));
+  }, []);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -113,15 +122,19 @@ export default function PaymentPage() {
     );
   }, [list, q, status, typeFilter]);
 
-  const changeStatus = async (t: PaymentTransaction, next: PaymentStatus) => {
+  const requestStatusChange = (t: PaymentTransaction, next: PaymentStatus) => {
     if (next === t.status) return;
-    setStatusBusy(t.id);
+    setStatusConfirm({ transaction: t, next });
+  };
+
+  const applyStatusChange = async () => {
+    if (!statusConfirm) return;
+    const { transaction, next } = statusConfirm;
+    setStatusBusy(transaction.id);
     try {
-      await updatePaymentStatus(t.id, next);
+      await updatePaymentStatus(transaction.id, next);
       setList(getPaymentTransactions());
-      toast.success(`Transaction ${t.txnId} updated to ${paymentStatusLabel(next)}.`);
-    } catch (e) {
-      toast.error((e as Error).message || 'Could not update status.');
+      toast.success(`Transaction ${transaction.txnId} updated to ${paymentStatusLabel(next)}.`);
     } finally {
       setStatusBusy(null);
     }
@@ -165,7 +178,10 @@ export default function PaymentPage() {
 
   return (
     <PageShell>
-      <PageTitle title="Payment Management" subtitle="Track payouts, penalties, and transaction status" />
+      <PageTitle
+        title="Payment Management"
+        subtitle="Payouts when a job is closed; $50 penalties when a member cancels within 24h of the shift."
+      />
 
       <div className="grid grid-cols-1 gap-3 sm:gap-[22.5px] md:grid-cols-3">
         <StatTile
@@ -251,11 +267,19 @@ export default function PaymentPage() {
           transactions={filtered}
           selected={selected}
           onSelectedChange={setSelected}
-          onStatusChange={changeStatus}
+          onStatusChange={requestStatusChange}
           statusBusy={statusBusy}
           emptyText={list.length === 0 ? 'No transactions yet.' : 'No transactions match your search.'}
         />
       </Card>
+
+      <PaymentStatusConfirmDialog
+        transaction={statusConfirm?.transaction ?? null}
+        nextStatus={statusConfirm?.next ?? null}
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={applyStatusChange}
+      />
     </PageShell>
   );
 }

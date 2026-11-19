@@ -3,6 +3,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -83,6 +84,19 @@ export function subscribeAdminEmails(
 export function isAdminEmailUser(user: UserDoc, adminEmails: Set<string>): boolean {
   const email = user.email?.trim().toLowerCase();
   return !!email && adminEmails.has(email);
+}
+
+export function payoutMethodLabel(payout?: Payout | null): string {
+  if (!payout) return 'Bank Transfer';
+  return payout.method === 'paynow' ? 'PayNow' : 'Bank Transfer';
+}
+
+/** For auto-created payout rows when a job closes. */
+export async function getUserPayoutMethodLabel(userUid: string): Promise<string> {
+  if (!userUid) return 'Bank Transfer';
+  const snap = await getDoc(userRef(userUid));
+  if (!snap.exists()) return 'Bank Transfer';
+  return payoutMethodLabel((snap.data() as UserDoc).payout);
 }
 
 export async function deleteUser(uid: string): Promise<void> {

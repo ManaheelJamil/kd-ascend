@@ -6,7 +6,7 @@ import { Button, Modal, ModalClose, cn, ui } from '@/components/ui';
 import { applicationStatusLabel, type ApplicationStatus, type JobApplication } from '@/lib/jobApplications';
 import { jobStatusLabel, type Job } from '@/lib/jobs';
 
-const STATUSES: ApplicationStatus[] = ['pending', 'approved', 'rejected'];
+const STATUSES: ApplicationStatus[] = ['pending', 'approved', 'rejected', 'cancelled'];
 
 function applicationsToCsv(rows: JobApplication[], job?: Job | null): string {
   const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;

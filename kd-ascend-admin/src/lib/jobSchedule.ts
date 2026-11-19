@@ -18,6 +18,25 @@ export function parseEventTimeRange(eventTime: string): { startMin: number; endM
   return { startMin, endMin };
 }
 
+/** Local wall-clock start of the shift (event date + range start from eventTime). */
+export function eventStartMs(eventDate: string, eventTime: string): number | null {
+  const range = parseEventTimeRange(eventTime);
+  if (!range || !eventDate.trim()) return null;
+  const parts = eventDate.split('-').map((p) => Number.parseInt(p, 10));
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null;
+  const [y, m, d] = parts;
+  const h = Math.floor(range.startMin / 60);
+  const min = range.startMin % 60;
+  return new Date(y, m - 1, d, h, min, 0, 0).getTime();
+}
+
+export function assumedHoursFromEventTime(eventTime: string, fallback = 6): number {
+  const range = parseEventTimeRange(eventTime);
+  if (!range) return fallback;
+  const hrs = (range.endMin - range.startMin) / 60;
+  return Math.round(hrs * 10) / 10;
+}
+
 export function eventSlotOverlaps(
   dateA: string,
   timeA: string,

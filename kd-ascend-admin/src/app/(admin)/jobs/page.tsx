@@ -8,7 +8,15 @@ import { Button, Card, IconButton, PageShell, PageTitle, Spinner, ToolbarSearch,
 import { DeleteJobDialog, JobStatusPicker } from '@/components/JobBits';
 import { JobStatusConfirmDialog } from '@/components/JobDialogs';
 import { useToast } from '@/components/Toast';
-import { JOB_STATUSES, jobStatusLabel, subscribeJobs, updateJobStatus, type Job, type JobStatus } from '@/lib/jobs';
+import {
+  JOB_STATUSES,
+  jobClosePayoutToast,
+  jobStatusLabel,
+  subscribeJobs,
+  updateJobStatus,
+  type Job,
+  type JobStatus,
+} from '@/lib/jobs';
 
 type SortKey = 'jobId' | 'title' | 'corporate' | 'eventDate' | 'salary' | 'status';
 
@@ -37,9 +45,13 @@ export default function JobsPage() {
     const { job, next } = statusConfirm;
     setStatusBusy(job.id);
     try {
-      await updateJobStatus(job.id, next);
+      const { createdPayouts } = await updateJobStatus(job.id, next);
       setList((l) => l.map((j) => (j.id === job.id ? { ...j, status: next } : j)));
-      toast.success(`Job status updated to ${jobStatusLabel(next)}.`);
+      const base = `Job status updated to ${jobStatusLabel(next)}.`;
+      toast.success(next === 'closed' ? jobClosePayoutToast(base, createdPayouts) : base);
+      setStatusConfirm(null);
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update job status.');
     } finally {
       setStatusBusy(null);
     }
