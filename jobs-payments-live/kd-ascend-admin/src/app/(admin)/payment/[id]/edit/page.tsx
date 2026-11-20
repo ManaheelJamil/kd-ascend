@@ -1,0 +1,40 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { PaymentForm } from '@/components/PaymentForm';
+import { FullPageSpinner, PageShell, ui } from '@/components/ui';
+import { loadPayment, type PaymentTransaction } from '@/lib/payments';
+
+export default function EditPaymentPage() {
+  const { id } = useParams<{ id: string }>();
+  const [payment, setPayment] = useState<PaymentTransaction | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!id) {
+      setPayment(null);
+      return;
+    }
+    // Read once: the form keeps what the admin types even if the payment changes meanwhile.
+    let alive = true;
+    loadPayment(id).then((p) => alive && setPayment(p));
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  if (payment === undefined) return <FullPageSpinner />;
+  if (!payment) {
+    return (
+      <PageShell>
+        <h1 className={ui.pageHeading}>Payment not found</h1>
+        <Link href="/payment" className="mt-4 text-brand underline">
+          Back to payments
+        </Link>
+      </PageShell>
+    );
+  }
+
+  return <PaymentForm payment={payment} />;
+}
