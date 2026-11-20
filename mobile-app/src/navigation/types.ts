@@ -26,6 +26,11 @@ export type RootStackParamList = {
   // Signed in, approved
   Home: undefined;
   Account: undefined;
+  // Jobs module
+  JobSearch: undefined;
+  JobDetail: { jobId: string };
+  Bookings: { tab?: 'upcoming' | 'past' } | undefined;
+  BookingDetail: { jobId: string };
   // DEV BRANCH (Account section off):
   // EditProfile: undefined;
   // IdentityDocuments: undefined;

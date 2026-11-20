@@ -25,6 +25,10 @@ import IdentityUploadScreen from '../screens/IdentityUploadScreen';
 import PayoutMethodScreen from '../screens/PayoutMethodScreen';
 import PayNowDetailsScreen from '../screens/PayNowDetailsScreen';
 import BankDetailsScreen from '../screens/BankDetailsScreen';
+import BookingsScreen from '../screens/BookingsScreen';
+import BookingDetailScreen from '../screens/BookingDetailScreen';
+import JobDetailScreen from '../screens/JobDetailScreen';
+import JobSearchScreen from '../screens/JobSearchScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AccountStatusScreen from '../screens/AccountStatusScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -177,6 +181,10 @@ export default function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
           <Stack.Group>
             <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'none' }} />
             <Stack.Screen name="Account" component={AccountScreen} options={{ animation: 'none' }} />
+            <Stack.Screen name="Bookings" component={BookingsScreen} options={{ animation: 'none' }} />
+            <Stack.Screen name="JobSearch" component={JobSearchScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
             {/* DEV BRANCH (Account section off):
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="IdentityDocuments" component={IdentityDocumentsScreen} />

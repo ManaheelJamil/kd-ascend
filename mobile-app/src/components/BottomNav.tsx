@@ -7,6 +7,20 @@ import { colors, fonts } from '../theme';
 
 export type Tab = 'home' | 'bookings' | 'earnings' | 'account';
 
+const TAB_ROUTE = { home: 'Home', bookings: 'Bookings', account: 'Account' } as const;
+
+/**
+ * Switch to a tab's screen. The stack is reset to that one screen, so moving between tabs
+ * never piles screens up (and Back on Android leaves the app from a tab, as expected).
+ */
+export function navigateTab(
+  navigation: { reset: (state: { index: number; routes: { name: never }[] }) => void },
+  tab: Tab,
+) {
+  if (tab === 'earnings') return;
+  navigation.reset({ index: 0, routes: [{ name: TAB_ROUTE[tab] as never }] });
+}
+
 const TABS: { key: Tab; label: string; Icon: (p: { color?: string }) => React.ReactElement }[] = [
   { key: 'home', label: 'Home', Icon: IconNavHome },
   { key: 'bookings', label: 'Bookings', Icon: IconNavBookings },
@@ -16,15 +30,15 @@ const TABS: { key: Tab; label: string; Icon: (p: { color?: string }) => React.Re
 
 /**
  * Figma "Footer Final": Home · Bookings · Earnings · Account, active tab in orange.
- * Bookings and Earnings aren't built yet, so they show a short "coming soon" note.
+ * Earnings isn't built yet, so it shows a short "coming soon" note.
  */
 export default function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const insets = useSafeAreaInsets();
 
   const press = (tab: Tab) => {
     if (tab === active) return;
-    if (tab === 'bookings' || tab === 'earnings') {
-      Alert.alert('Coming soon', `${tab === 'bookings' ? 'Bookings' : 'Earnings'} will be available in a future update.`);
+    if (tab === 'earnings') {
+      Alert.alert('Coming soon', 'Earnings will be available in a future update.');
       return;
     }
     onChange(tab);

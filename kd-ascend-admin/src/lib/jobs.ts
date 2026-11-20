@@ -59,6 +59,8 @@ export type Job = JobInput & {
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
   createdBy?: string;
+  /** Approved applicants, kept in sync by the dashboard so the mobile app can show "slots left". */
+  approvedCount?: number;
 };
 
 export function emptyJobInput(): JobInput {

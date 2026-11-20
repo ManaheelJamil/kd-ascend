@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Text from '../components/AppText';
 import AccountLayout from '../components/AccountLayout';
-import BottomNav from '../components/BottomNav';
+import BottomNav, { navigateTab } from '../components/BottomNav';
 import {
   // DEV BRANCH (Account section off): IconBell, IconCard, IconChevronRight, IconDocument, IconHelp, IconPerson,
   IconLogout,
@@ -63,7 +63,7 @@ export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
     <AccountLayout
       title="Account"
       contentTop={20}
-      bottomNav={<BottomNav active="account" onChange={(t) => t === 'home' && navigation.navigate('Home')} />}
+      bottomNav={<BottomNav active="account" onChange={(t) => navigateTab(navigation, t)} />}
     >
       <View style={styles.card}>
         <View style={styles.avatar}>

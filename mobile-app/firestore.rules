@@ -114,34 +114,97 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Signed-in member whose account an admin has approved (the only status that can use the app).
+    function isApprovedMember() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+    function jobData(jobId) {
+      return get(/databases/$(database)/documents/jobs/$(jobId)).data;
+    }
+    function blockedByCorporate(corporateId) {
+      return exists(/databases/$(database)/documents/corporates/$(corporateId)/blacklistedUsers/$(request.auth.uid));
+    }
+
     // Corporate partners: managed from the admin dashboard only.
     match /corporates/{corporateId} {
       allow read, write: if isAdmin();
 
-      // Users restricted from this corporate's jobs.
+      // Users restricted from this corporate's jobs. A member may check only their own entry
+      // (the app uses it to hide that corporate's jobs).
       match /blacklistedUsers/{userUid} {
         allow read, write: if isAdmin();
+        allow get: if request.auth != null && request.auth.uid == userUid;
       }
     }
 
-    // Jobs and their applications: admin dashboard only for now
-    // (the mobile app will get read / apply / cancel access with the Jobs screens).
+    // Jobs: written by the admin dashboard. Approved members can read every job except drafts
+    // (open jobs to browse, and the jobs they are booked on after those close or are cancelled).
     match /jobs/{jobId} {
       allow read, write: if isAdmin();
+      allow read: if isApprovedMember() && resource.data.status in ['open', 'filled', 'closed', 'cancelled'];
 
+      // Applications: the admin adds / approves / rejects. A member applies with a document whose id
+      // is their own uid (one per job), can read their own, cancel it, and apply again after cancelling.
       match /applications/{applicationId} {
+        function appFields() {
+          return request.resource.data.keys().hasOnly([
+            'jobId', 'userUid', 'uid', 'name', 'email', 'phone', 'status', 'doneBefore',
+            'addedAt', 'addedBy', 'statusUpdatedAt', 'cancelledAt', 'cancelledAtServer'
+          ]);
+        }
+        function canApplyToJob() {
+          return isApprovedMember()
+            && jobData(jobId).status == 'open'
+            && !blockedByCorporate(jobData(jobId).corporateId);
+        }
+
         allow read, write: if isAdmin();
+        allow get: if request.auth != null && resource.data.userUid == request.auth.uid;
+
+        allow create: if request.auth != null
+          && applicationId == request.auth.uid
+          && request.resource.data.userUid == request.auth.uid
+          && request.resource.data.jobId == jobId
+          && request.resource.data.status == 'pending'
+          && request.resource.data.addedBy == 'app'
+          && request.resource.data.addedAt == request.time
+          && appFields()
+          && canApplyToJob();
+
+        allow update: if request.auth != null
+          && resource.data.userUid == request.auth.uid
+          && (
+            // Cancel (pending or approved). The server time is what counts for the late-cancel penalty.
+            (resource.data.status in ['pending', 'approved']
+              && request.resource.data.status == 'cancelled'
+              && request.resource.data.cancelledAtServer == request.time
+              && request.resource.data.statusUpdatedAt == request.time
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status', 'cancelledAt', 'cancelledAtServer', 'statusUpdatedAt']))
+            ||
+            // Apply again after cancelling (not after an admin rejected them).
+            (resource.data.status == 'cancelled'
+              && request.resource.data.status == 'pending'
+              && request.resource.data.statusUpdatedAt == request.time
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status', 'statusUpdatedAt', 'name', 'phone', 'doneBefore'])
+              && canApplyToJob())
+          );
       }
     }
 
-    // The dashboard listens to every job's applications at once (collection group query).
+    // Every job's applications at once (collection group): the dashboard reads all of them,
+    // a member only their own (the app queries where userUid == their uid).
     match /{path=**}/applications/{applicationId} {
-      allow read: if isAdmin();
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.userUid == request.auth.uid);
     }
 
-    // Payouts and late-cancel penalties: admin dashboard only.
+    // Payouts and late-cancel penalties: written by the admin dashboard; a member can read their own.
     match /paymentTransactions/{paymentId} {
       allow read, write: if isAdmin();
+      allow read: if request.auth != null && resource.data.userUid == request.auth.uid;
     }
 
     // Counters behind sequential IDs (users KD01U…, jobs JOB-1001…, payments TXN1…), managed by the admin dashboard.
