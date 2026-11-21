@@ -47,6 +47,8 @@ export type Job = {
   /** Approved applicants (kept up to date by the admin dashboard). */
   approvedCount?: number;
   createdAtMs?: number;
+  /** Last change by the admin (ms), e.g. when the job was cancelled. */
+  updatedAtMs?: number;
 };
 
 export type JobApplication = {
@@ -56,7 +58,16 @@ export type JobApplication = {
   status: ApplicationStatus;
   cancelledAt?: string;
   addedAt?: { toMillis?: () => number } | null;
+  /** When the application was made (ms). */
+  addedAtMs?: number;
+  /** Last approve / reject / cancel (ms). */
+  statusUpdatedAtMs?: number;
 };
+
+const tsMs = (v: unknown): number | undefined =>
+  v && typeof (v as { toMillis?: () => number }).toMillis === 'function'
+    ? (v as { toMillis: () => number }).toMillis()
+    : undefined;
 
 export type PaymentTransaction = {
   id: string;
@@ -68,7 +79,9 @@ export type PaymentTransaction = {
   jobIdLabel: string;
   method: string;
   note?: string;
-  completedAt?: string;
+  /** When the admin completed the payment (ms), if completed. */
+  completedAtMs?: number;
+  applicationId?: string;
   hourlyRate: number;
   adjustedHours: number;
   bonus: number;
@@ -241,6 +254,10 @@ function toJob(id: string, d: Record<string, unknown>): Job {
       d.createdAt && typeof (d.createdAt as { toMillis?: () => number }).toMillis === 'function'
         ? (d.createdAt as { toMillis: () => number }).toMillis()
         : undefined,
+    updatedAtMs:
+      d.updatedAt && typeof (d.updatedAt as { toMillis?: () => number }).toMillis === 'function'
+        ? (d.updatedAt as { toMillis: () => number }).toMillis()
+        : undefined,
   };
 }
 
@@ -338,6 +355,8 @@ export function subscribeMyApplications(
             status: (a.status as ApplicationStatus) ?? 'pending',
             cancelledAt: typeof a.cancelledAt === 'string' ? a.cancelledAt : undefined,
             addedAt: (a.addedAt as JobApplication['addedAt']) ?? null,
+            addedAtMs: tsMs(a.addedAt),
+            statusUpdatedAtMs: tsMs(a.statusUpdatedAt) ?? tsMs(a.cancelledAtServer),
           };
         }),
       ),
@@ -414,11 +433,15 @@ export function subscribeMyBookings(
   };
 }
 
-/** My payouts and penalties, newest first. Drafts stay hidden until the admin verifies them. */
+/**
+ * My payouts and penalties, newest first. Drafts (not yet checked by the admin) are left out
+ * unless includeDrafts is set (Earnings shows them as "Pending").
+ */
 export function subscribeMyPayments(
   uid: string,
   onData: (rows: PaymentTransaction[]) => void,
   onError?: (e: Error) => void,
+  includeDrafts = false,
 ): () => void {
   return onSnapshot(
     query(collection(db, 'paymentTransactions'), where('userUid', '==', uid)),
@@ -436,7 +459,11 @@ export function subscribeMyPayments(
             jobIdLabel: String(t.jobIdLabel ?? ''),
             method: String(t.method ?? ''),
             note: typeof t.note === 'string' ? t.note : undefined,
-            completedAt: typeof t.completedAt === 'string' ? t.completedAt : undefined,
+            completedAtMs:
+              t.completedAt && typeof (t.completedAt as { toMillis?: () => number }).toMillis === 'function'
+                ? (t.completedAt as { toMillis: () => number }).toMillis()
+                : undefined,
+            applicationId: typeof t.applicationId === 'string' ? t.applicationId : undefined,
             hourlyRate: Number(t.hourlyRate ?? 0) || 0,
             adjustedHours: Number(t.adjustedHours ?? 0) || 0,
             bonus: Number(t.bonus ?? 0) || 0,
@@ -445,7 +472,7 @@ export function subscribeMyPayments(
             createdAt: (t.createdAt as PaymentTransaction['createdAt']) ?? null,
           };
         })
-        .filter((t) => t.status !== 'draft');
+        .filter((t) => t.status !== 'failed' && (includeDrafts || t.status !== 'draft'));
       rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
       onData(rows);
     },
@@ -495,6 +522,8 @@ export function findTimeConflict(job: Job, bookings: Booking[]): Job | null {
  * used for the duplicate and time-conflict checks.
  */
 export async function applyToJob(job: Job, user: UserDoc, bookings: Booking[]): Promise<void> {
+  if (user.status === 'under_review')
+    throw new JobActionError('Your updated profile is being reviewed. You can apply again once the admin approves it.');
   if (user.status !== 'approved') throw new JobActionError('Your account needs to be approved before you can apply.');
   if (job.status !== 'open') throw new JobActionError('This job is no longer taking applications.');
   if ((eventStartMs(job) ?? Number.MAX_SAFE_INTEGER) <= Date.now())

@@ -32,9 +32,15 @@ import JobSearchScreen from '../screens/JobSearchScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AccountStatusScreen from '../screens/AccountStatusScreen';
 import AccountScreen from '../screens/AccountScreen';
-// DEV BRANCH (Account section off): import EditProfileScreen from '../screens/EditProfileScreen';
-// DEV BRANCH (Account section off): import IdentityDocumentsScreen from '../screens/IdentityDocumentsScreen';
-// DEV BRANCH (Account section off): import UploadDocumentScreen from '../screens/UploadDocumentScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
+import ContactAdminScreen from '../screens/ContactAdminScreen';
+import ReportIssueScreen from '../screens/ReportIssueScreen';
+import EarningsScreen from '../screens/EarningsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import IdentityDocumentsScreen from '../screens/IdentityDocumentsScreen';
+import UploadDocumentScreen from '../screens/UploadDocumentScreen';
 import PaymentDetailsScreen from '../screens/PaymentDetailsScreen';
 import ResubmitScreen from '../screens/ResubmitScreen';
 
@@ -185,12 +191,16 @@ export default function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
             <Stack.Screen name="JobSearch" component={JobSearchScreen} />
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
             <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
-            {/* DEV BRANCH (Account section off):
+            <Stack.Screen name="Earnings" component={EarningsScreen} options={{ animation: 'none' }} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="IdentityDocuments" component={IdentityDocumentsScreen} />
             <Stack.Screen name="UploadDocument" component={UploadDocumentScreen} />
             <Stack.Screen name="PaymentDetails" component={PaymentDetailsScreen} />
-            */}
+            <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+            <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+            <Stack.Screen name="ContactAdmin" component={ContactAdminScreen} />
+            <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

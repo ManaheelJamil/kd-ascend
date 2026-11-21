@@ -119,6 +119,13 @@ service cloud.firestore {
       return request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
     }
+    // Approved before and now back under review after editing their profile / uploading a new
+    // document: can still see jobs and their bookings, but can't apply until approved again.
+    function isMemberReadOnly() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'under_review'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('approvedAt', null) != null;
+    }
     function jobData(jobId) {
       return get(/databases/$(database)/documents/jobs/$(jobId)).data;
     }
@@ -142,7 +149,8 @@ service cloud.firestore {
     // (open jobs to browse, and the jobs they are booked on after those close or are cancelled).
     match /jobs/{jobId} {
       allow read, write: if isAdmin();
-      allow read: if isApprovedMember() && resource.data.status in ['open', 'filled', 'closed', 'cancelled'];
+      allow read: if (isApprovedMember() || isMemberReadOnly())
+        && resource.data.status in ['open', 'filled', 'closed', 'cancelled'];
 
       // Applications: the admin adds / approves / rejects. A member applies with a document whose id
       // is their own uid (one per job), can read their own, cancel it, and apply again after cancelling.

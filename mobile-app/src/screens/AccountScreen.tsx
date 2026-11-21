@@ -4,8 +4,13 @@ import Text from '../components/AppText';
 import AccountLayout from '../components/AccountLayout';
 import BottomNav, { navigateTab } from '../components/BottomNav';
 import {
-  // DEV BRANCH (Account section off): IconBell, IconCard, IconChevronRight, IconDocument, IconHelp, IconPerson,
+  IconBell,
+  IconCard,
+  IconChevronRight,
+  IconDocument,
+  IconHelp,
   IconLogout,
+  IconPerson,
 } from '../components/AccountIcons';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../services/authService';
@@ -13,21 +18,19 @@ import { initials } from '../utils/format';
 import { colors, fonts, layout } from '../theme';
 import type { ScreenProps } from '../navigation/types';
 
-// DEV BRANCH (Account section off): the menu rows below are switched off; only Logout stays.
-// type Row = {
-//   label: string;
-//   Icon: (p: { color?: string }) => React.ReactElement;
-//   route?: keyof RootStackParamList;
-// };
+type Row = {
+  label: string;
+  Icon: (p: { color?: string }) => React.ReactElement;
+  route: 'EditProfile' | 'IdentityDocuments' | 'PaymentDetails' | 'NotificationSettings' | 'HelpSupport';
+};
 
-// const ROWS: Row[] = [
-//   { label: 'Edit Profile', Icon: IconPerson, route: 'EditProfile' },
-//   { label: 'Identity Documents', Icon: IconDocument, route: 'IdentityDocuments' },
-//   { label: 'Payment Details', Icon: IconCard, route: 'PaymentDetails' },
-//   // Not part of this module yet.
-//   { label: 'Notification Settings', Icon: IconBell },
-//   { label: 'Help & Support', Icon: IconHelp },
-// ];
+const ROWS: Row[] = [
+  { label: 'Edit Profile', Icon: IconPerson, route: 'EditProfile' },
+  { label: 'Identity Documents', Icon: IconDocument, route: 'IdentityDocuments' },
+  { label: 'Payment Details', Icon: IconCard, route: 'PaymentDetails' },
+  { label: 'Notification Settings', Icon: IconBell, route: 'NotificationSettings' },
+  { label: 'Help & Support', Icon: IconHelp, route: 'HelpSupport' },
+];
 
 /** Figma "Account" (196:4670). */
 export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
@@ -37,10 +40,7 @@ export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
   const email = user?.email ?? profile?.email ?? '';
   const verified = profile?.status === 'approved';
 
-  // const open = (row: Row) => {
-  //   if (row.route) navigation.navigate(row.route as never);
-  //   else Alert.alert('Coming soon', `${row.label} will be available in a future update.`);
-  // };
+  const open = (row: Row) => navigation.navigate(row.route);
 
   const logout = () =>
     Alert.alert('Logout', 'Are you sure you want to log out?', [
@@ -85,8 +85,6 @@ export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
         </View>
       </View>
 
-      {/* DEV BRANCH (Account section off): Edit Profile, Identity Documents, Payment Details,
-          Notification Settings and Help & Support rows.
       <View style={styles.list}>
         {ROWS.map((row, i) => (
           <View key={row.label}>
@@ -108,7 +106,6 @@ export default function AccountScreen({ navigation }: ScreenProps<'Account'>) {
           </View>
         ))}
       </View>
-      */}
 
       <Pressable
         onPress={logout}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Text from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconNavAccount, IconNavBookings, IconNavEarnings, IconNavHome } from './AccountIcons';
@@ -7,7 +7,7 @@ import { colors, fonts } from '../theme';
 
 export type Tab = 'home' | 'bookings' | 'earnings' | 'account';
 
-const TAB_ROUTE = { home: 'Home', bookings: 'Bookings', account: 'Account' } as const;
+const TAB_ROUTE = { home: 'Home', bookings: 'Bookings', earnings: 'Earnings', account: 'Account' } as const;
 
 /**
  * Switch to a tab's screen. The stack is reset to that one screen, so moving between tabs
@@ -17,7 +17,6 @@ export function navigateTab(
   navigation: { reset: (state: { index: number; routes: { name: never }[] }) => void },
   tab: Tab,
 ) {
-  if (tab === 'earnings') return;
   navigation.reset({ index: 0, routes: [{ name: TAB_ROUTE[tab] as never }] });
 }
 
@@ -30,17 +29,12 @@ const TABS: { key: Tab; label: string; Icon: (p: { color?: string }) => React.Re
 
 /**
  * Figma "Footer Final": Home · Bookings · Earnings · Account, active tab in orange.
- * Earnings isn't built yet, so it shows a short "coming soon" note.
  */
 export default function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const insets = useSafeAreaInsets();
 
   const press = (tab: Tab) => {
     if (tab === active) return;
-    if (tab === 'earnings') {
-      Alert.alert('Coming soon', 'Earnings will be available in a future update.');
-      return;
-    }
     onChange(tab);
   };
 

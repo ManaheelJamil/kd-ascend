@@ -33,7 +33,8 @@ export const IconArrowUpRight = () => (
 export const IconArrowRightWhite = () => <JobSvg.ArrowWhite />;
 
 /* Home header */
-export const IconBell = () => <JobSvg.Bell />;
+/** Bell button (44pt); the red dot shows only when there are unread notifications. */
+export const IconBell = ({ dot = false }: { dot?: boolean }) => (dot ? <JobSvg.Bell /> : <JobSvg.BellPlain />);
 export const IconVerified = () => <JobSvg.Verified />;
 export const IconSearch = () => (
   <Box size={27}>

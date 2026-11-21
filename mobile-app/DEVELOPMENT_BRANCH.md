@@ -20,22 +20,17 @@ are commented out (not deleted), so testers see only what is in scope.
 - Email notifications
 - Logout (Home → Account tab → Logout)
 
+## Added since
+
+- Jobs: Home job list, Search, Filters, Job Detail, Apply, My Bookings, booking page, Cancel Booking
+- Earnings: summary card, transaction history (Pending / Processing / Paid / Deducted), filters, Export Payslip
+- Notifications: bell with unread dot, Notifications list (built live from bookings, payments and profile)
+- Account: Edit Profile, Identity Documents (front + back), Upload Document, Payment Details,
+  Notification Settings, Help & Support (FAQ), Contact Admin, Report an Issue
+
 ## Switched OFF (commented out)
 
-Search for `DEV BRANCH` to find every change.
-
-| What | Where |
-| --- | --- |
-| Account → Edit Profile | `src/screens/EditProfileScreen.tsx` (whole file) |
-| Account → Identity Documents | `src/screens/IdentityDocumentsScreen.tsx` (whole file) |
-| Account → Upload Document | `src/screens/UploadDocumentScreen.tsx` (whole file) |
-| Account menu rows (Edit Profile, Identity Documents, Payment Details, Notification Settings, Help & Support) | `src/screens/AccountScreen.tsx`: only the profile card and Logout remain |
-| Screen registrations for the above | `src/navigation/RootNavigator.tsx`, `src/navigation/types.ts` |
-| Edit Profile / Upload Document save helpers | `src/services/userService.ts` |
-
-`PaymentDetailsScreen.tsx` stays because the Resubmit flow uses it when an admin asks a
-blocked or rejected user to fix their payout details. `DOCUMENT_TYPES` was moved to
-`src/data/options.ts` for the same reason.
+Nothing at the moment: the Account section is back on.
 
 ## Bringing a feature back
 

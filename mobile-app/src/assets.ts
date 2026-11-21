@@ -28,6 +28,7 @@ import JobArrowOrange from '../assets/figma/jobs/arrow-orange.svg';
 import JobArrowWhite from '../assets/figma/jobs/arrow-white.svg';
 import JobBack from '../assets/figma/jobs/back.svg';
 import JobBell from '../assets/figma/jobs/bell.svg';
+import JobBellPlain from '../assets/figma/jobs/bell-plain.svg';
 import JobBookingCalendar from '../assets/figma/jobs/booking-calendar.svg';
 import JobBuilding from '../assets/figma/jobs/building.svg';
 import JobCalendarLg from '../assets/figma/jobs/calendar-lg.svg';
@@ -59,6 +60,14 @@ import JobToggle from '../assets/figma/jobs/toggle.svg';
 import JobToggleOff from '../assets/figma/jobs/toggle-off.svg';
 import JobVerified from '../assets/figma/jobs/verified.svg';
 import JobWarning from '../assets/figma/jobs/warning.svg';
+
+// Earnings (Figma 196:4501) and Notifications (196:2673), exported from the Figma file.
+import EarnExport from '../assets/figma/earnings/export.svg';
+import EarnCalendar from '../assets/figma/earnings/calendar.svg';
+import NotifPending from '../assets/figma/notifications/notif-pending.svg';
+import NotifSuccess from '../assets/figma/notifications/notif-success.svg';
+import NotifError from '../assets/figma/notifications/notif-error.svg';
+import NotifReminder from '../assets/figma/notifications/notif-reminder.svg';
 
 export const images = {
   logo: require('../assets/figma/logo.png'),
@@ -102,6 +111,7 @@ export const JobSvg = {
   ArrowWhite: JobArrowWhite,
   Back: JobBack,
   Bell: JobBell,
+  BellPlain: JobBellPlain,
   BookingCalendar: JobBookingCalendar,
   Building: JobBuilding,
   CalendarLg: JobCalendarLg,
@@ -143,3 +153,14 @@ export const jobImages = {
   /** Calendar shape of "Cancel Booking", shown tinted red (Figma mask 308:665). */
   cancelMask: require('../assets/figma/jobs/cancel-mask.png'),
 };
+
+export const EarnSvg = { Export: EarnExport, Calendar: EarnCalendar };
+export const earnImages = {
+  /** Coins illustration on the dark summary card (Figma "coins 1", 74×74). */
+  coins: require('../assets/figma/earnings/coins.png'),
+  /** Texture behind the summary card (Figma "image 10", shown at 5% opacity). */
+  cardTexture: require('../assets/figma/earnings/card-texture.png'),
+};
+
+/** Notification icons (32×32): yellow clock, green tick, red cross, blue calendar. */
+export const NotifSvg = { Pending: NotifPending, Success: NotifSuccess, Error: NotifError, Reminder: NotifReminder };

@@ -150,27 +150,35 @@ export const markSubmitted = (uid: string) =>
 
 /* ---------- Account section (after approval) ---------- */
 
-// DEV BRANCH (Account section off): Edit Profile / Upload Document helpers.
-// /**
-//  * Edit Profile: saves the new details and sends the account back to admin review
-//  * ("Your account status will be temporarily set to Unverified"). The user keeps using the app.
-//  */
-// export const updateProfileForReview = (uid: string, profile: PersonalInfo) =>
-//   updateDoc(userRef(uid), {
-//     profile,
-//     status: 'under_review',
-//     submittedAt: serverTimestamp(),
-//     updatedAt: serverTimestamp(),
-//   });
+/**
+ * Edit Profile: saves the new details and sends the account back to admin review
+ * ("Your account status will be temporarily set to Unverified"). The user keeps using the app.
+ */
+export const updateProfileForReview = (uid: string, profile: PersonalInfo) =>
+  updateDoc(userRef(uid), {
+    profile,
+    status: 'under_review',
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 
-// /** Identity Documents → Upload: replaces the document and sends it for admin review. */
-// export const replaceIdentityDocument = (uid: string, file: StoredFile, label: string) =>
-//   updateDoc(userRef(uid), {
-//     identityDocument: { ...file, label, uploadedAt: serverTimestamp() },
-//     status: 'under_review',
-//     submittedAt: serverTimestamp(),
-//     updatedAt: serverTimestamp(),
-//   });
+/**
+ * Identity Documents → Upload: saves the front and back of one document (Student Pass or IC),
+ * keeps the other document if there is one, and sends the account back to admin review.
+ * identityDocument (single file, read by the admin's document review) is set to the new front side.
+ */
+export const replaceIdentityDocuments = (
+  uid: string,
+  identityDocuments: Record<string, { front: StoredFile; back: StoredFile }>,
+  primary: StoredFile,
+) =>
+  updateDoc(userRef(uid), {
+    identityDocuments,
+    identityDocument: { ...primary, uploadedAt: serverTimestamp() },
+    status: 'under_review',
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 
 /** Payment Details: switch between PayNow and bank transfer or change the details. */
 export const updatePayout = (uid: string, payout: Payout) =>

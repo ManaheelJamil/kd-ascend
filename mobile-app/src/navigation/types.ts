@@ -31,12 +31,18 @@ export type RootStackParamList = {
   JobDetail: { jobId: string };
   Bookings: { tab?: 'upcoming' | 'past' } | undefined;
   BookingDetail: { jobId: string };
-  // DEV BRANCH (Account section off):
-  // EditProfile: undefined;
-  // IdentityDocuments: undefined;
-  // UploadDocument: undefined;
-  // Payment Details stays: the Resubmit flow (blocked / rejected users) still uses it.
+  // Account module
+  EditProfile: undefined;
+  IdentityDocuments: undefined;
+  UploadDocument: undefined;
   PaymentDetails: undefined;
+  NotificationSettings: undefined;
+  HelpSupport: undefined;
+  ContactAdmin: undefined;
+  ReportIssue: undefined;
+  // Earnings & notifications
+  Earnings: undefined;
+  Notifications: undefined;
 };
 
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, T>;

@@ -97,6 +97,13 @@ export function useApplyFlow(bookings: Booking[], onDone: () => void) {
 
   const start = useCallback(
     (j: Job) => {
+      if (profile?.status === 'under_review') {
+        Alert.alert(
+          'Profile under review',
+          'Your updated profile is being reviewed. You can apply again once the admin approves it.',
+        );
+        return;
+      }
       const state = applyState(j, bookings);
       if (state.disabled) {
         if (state.reason) Alert.alert('Time clash', `You’re already booked for “${state.reason}” at the same time.`);
@@ -104,7 +111,7 @@ export function useApplyFlow(bookings: Booking[], onDone: () => void) {
       }
       setJob(j);
     },
-    [bookings],
+    [bookings, profile?.status],
   );
 
   const confirm = async () => {

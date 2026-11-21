@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, configStatus, ConfigError } from '@/server/admin';
-import { FnError, handlers } from '@/server/otp';
+import { FnError, handlers as otpHandlers } from '@/server/otp';
+import { supportHandlers } from '@/server/support';
+
+const handlers = { ...otpHandlers, ...supportHandlers };
 
 /**
  * HTTPS endpoint for the mobile app: POST /api/fn/<functionName>

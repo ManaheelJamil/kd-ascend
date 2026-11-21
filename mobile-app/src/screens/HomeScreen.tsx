@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Text from '../components/AppText';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { EmptyState, JobCard } from '../components/JobParts';
 import JobFilterSheet, { DEFAULT_FILTERS, activeFilterCount, type JobFilters } from '../components/JobFilterSheet';
 import { applyState, distinct, filterJobs, useApplyFlow, useMyBookings, useOpenJobs } from '../hooks/useJobs';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { initials } from '../utils/format';
 import { colors, fonts, layout } from '../theme';
 import type { ScreenProps } from '../navigation/types';
@@ -29,6 +30,9 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [filters, setFilters] = useState<JobFilters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const apply = useApplyFlow(bookings, () => undefined);
+  const { unread } = useNotifications();
+  // After Edit Profile / a new document the account is back under review: jobs are paused until approved.
+  const reviewing = !!error && profile?.status === 'under_review';
 
   const shown = useMemo(() => filterJobs(jobs, { filters, bookings }), [jobs, filters, bookings]);
   const filterCount = activeFilterCount(filters);
@@ -48,12 +52,12 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           Hey, {name}
         </Text>
         <Pressable
-          onPress={() => Alert.alert('Coming soon', 'Notifications will be available in a future update.')}
+          onPress={() => navigation.navigate('Notifications')}
           style={({ pressed }) => [pressed && { opacity: 0.7 }]}
           accessibilityRole="button"
-          accessibilityLabel="Notifications"
+          accessibilityLabel={unread ? `Notifications, ${unread} new` : 'Notifications'}
         >
-          <IconBell />
+          <IconBell dot={unread > 0} />
         </Pressable>
       </View>
 
@@ -93,9 +97,11 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   ) : (
     <EmptyState
       icon={<IconNavBookings size={40} color={colors.grey} />}
-      title={error ? 'Couldn’t load jobs' : filterCount ? 'No matching jobs' : 'No jobs yet'}
+      title={reviewing ? 'Profile under review' : error ? 'Couldn’t load jobs' : filterCount ? 'No matching jobs' : 'No jobs yet'}
       text={
-        error ??
+        (reviewing
+          ? 'You updated your profile, so the admin is checking it again. You can book jobs once it is approved.'
+          : error) ??
         (filterCount ? 'Try changing or clearing your filters.' : 'New jobs will show up here as soon as they’re available.')
       }
       action={filterCount && !error ? { label: 'Clear filters', onPress: () => setFilters(DEFAULT_FILTERS) } : undefined}
