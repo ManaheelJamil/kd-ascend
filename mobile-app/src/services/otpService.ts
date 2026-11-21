@@ -48,7 +48,9 @@ export const notifyPasswordChanged = () =>
  * TEST MODE (config.devOtpCode set): "Forgot Password → Via SMS" with a fixed code.
  * Nothing is sent; the server accepts its TEST_SMS_OTP code and returns a reset token.
  */
-export const sendTestSmsResetCode = (phone: string) => callFunction<SendResult>('sendTestSmsResetCode', { phone });
+/** identifier = phone in E.164, or the account's email (the server finds its phone number). */
+export const sendTestSmsResetCode = (identifier: string) =>
+  callFunction<SendResult>('sendTestSmsResetCode', { identifier });
 
-export const verifyTestSmsResetCode = (phone: string, code: string) =>
-  callFunction<VerifyResult<{ resetToken: string }>>('verifyTestSmsResetCode', { phone, code });
+export const verifyTestSmsResetCode = (identifier: string, code: string) =>
+  callFunction<VerifyResult<{ resetToken: string }>>('verifyTestSmsResetCode', { identifier, code });

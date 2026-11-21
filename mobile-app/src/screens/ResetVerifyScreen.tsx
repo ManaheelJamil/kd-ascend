@@ -32,7 +32,7 @@ export default function ResetVerifyScreen({ navigation, route }: ScreenProps<'Re
 
   const message =
     params.channel === 'sms' && isDevOtp()
-      ? `Test mode: no SMS is sent. Enter ${devOtpCode()} to reset the password for ${params.phone}.`
+      ? `Test mode: no SMS is sent. Enter ${devOtpCode()} to reset the password for ${params.destination ?? params.phone}.`
       : params.channel === 'sms'
       ? `We’ve sent a 6-digit verification code to your registered phone number (${params.phone}).`
       : `We’ve sent a 6-digit verification code to (${params.destination})`;

@@ -59,11 +59,8 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
         return;
       }
 
-      // SMS: Firebase sends the code to the number itself, so a phone number is required.
-      if (isEmail(id)) {
-        return closeWithError('To reset via SMS, please enter your registered phone number.');
-      }
       // Test mode: no SMS is sent; the next screen accepts the fixed test code.
+      // The server finds the account by phone OR email, so an email works here too.
       if (isDevOtp()) {
         const res = await sendTestSmsResetCode(id);
         if (res.status === 'locked') {
@@ -73,8 +70,16 @@ export default function ForgotPasswordScreen({ navigation }: ScreenProps<'Forgot
         }
         setSending(null);
         setModal(false);
-        navigation.navigate('ResetVerify', { channel: 'sms', phone: id });
+        navigation.navigate('ResetVerify', {
+          channel: 'sms',
+          phone: id,
+          destination: 'destination' in res ? res.destination : undefined,
+        });
         return;
+      }
+      // Real SMS: Firebase sends the code from this phone to the number itself, so the number is needed.
+      if (isEmail(id)) {
+        return closeWithError('To get the code by SMS, enter your phone number instead, or choose Via Email.');
       }
       const locked = await phoneLockRemaining(id);
       if (locked > 0) {

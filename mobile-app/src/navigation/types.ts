@@ -6,7 +6,8 @@ export type RootStackParamList = {
   SignUp: undefined;
   ForgotPassword: undefined;
   ResetVerify:
-    | { channel: 'sms'; phone: string }
+    /** phone = E.164 number, or the account's email in SMS test mode; destination = masked number to show. */
+    | { channel: 'sms'; phone: string; destination?: string }
     | { channel: 'email'; identifier: string; destination: string; cooldownSeconds?: number; lockedSeconds?: number };
   CreateNewPassword: { mode: 'sms' } | { mode: 'email'; resetToken: string };
 
