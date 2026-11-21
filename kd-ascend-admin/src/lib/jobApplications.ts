@@ -61,9 +61,16 @@ const appsStore = liveStore<Map<string, JobApplication[]>>(new Map(), (set, fail
       snap.docs.forEach((d) => {
         const jobId = d.ref.parent.parent?.id;
         if (!jobId) return;
-        const a = d.data() as Omit<JobApplication, 'id'>;
+        const a = d.data() as Omit<JobApplication, 'id'> & { cancelledAtServer?: Timestamp | null };
+        // Cancels from the mobile app carry a server timestamp (the app's own clock can't be trusted
+        // for the 24-hour late-cancel penalty).
+        const serverCancel =
+          a.cancelledAtServer && typeof a.cancelledAtServer.toDate === 'function'
+            ? a.cancelledAtServer.toDate().toISOString()
+            : undefined;
         const row: JobApplication = {
           ...a,
+          cancelledAt: serverCancel ?? a.cancelledAt,
           id: d.id,
           jobId,
           userUid: a.userUid ?? '',
@@ -77,10 +84,38 @@ const appsStore = liveStore<Map<string, JobApplication[]>>(new Map(), (set, fail
       });
       byJob.forEach((list) => list.sort((x, y) => millis(x.addedAt) - millis(y.addedAt)));
       set(byJob);
+      scheduleApprovedCountSync();
     },
     (e) => fail(e),
   ),
 );
+
+/**
+ * Members can't read other people's applications, so each job carries `approvedCount`
+ * (the mobile app shows "N slots left" from it). Whenever applications change, the dashboard
+ * writes the new count on the jobs where it differs.
+ */
+let countSyncTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleApprovedCountSync() {
+  if (countSyncTimer) clearTimeout(countSyncTimer);
+  countSyncTimer = setTimeout(() => {
+    countSyncTimer = null;
+    void syncApprovedCounts();
+  }, 800);
+}
+async function syncApprovedCounts() {
+  try {
+    await jobsReady();
+    const byJob = appsStore.get();
+    for (const job of getAllJobs()) {
+      const approved = (byJob.get(job.id) ?? []).filter((a) => a.status === 'approved').length;
+      if ((job.approvedCount ?? 0) === approved && job.approvedCount !== undefined) continue;
+      await updateDoc(doc(db, 'jobs', job.id), { approvedCount: approved }).catch(() => undefined);
+    }
+  } catch {
+    // Not signed in yet: the next snapshot tries again.
+  }
+}
 
 /** Resolves once applications (and jobs) have loaded. */
 export async function applicationsReady(): Promise<void> {

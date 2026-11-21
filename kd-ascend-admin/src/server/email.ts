@@ -43,3 +43,14 @@ export const sendVerificationEmail = (cfg: MailConfig, to: string, code: string,
 
 export const sendResetEmail = (cfg: MailConfig, to: string, code: string, name?: string | null) =>
   sendTemplate(cfg, to, 'resetCode', { code, name });
+
+/** Sends a plain email (no template), e.g. a user's "Report an Issue" to the support inbox. */
+export async function sendPlain(
+  cfg: MailConfig,
+  to: string,
+  subject: string,
+  text: string,
+  replyTo?: string | null,
+) {
+  await getTransport(cfg).sendMail({ from: cfg.from, to, subject, text, ...(replyTo ? { replyTo } : {}) });
+}
