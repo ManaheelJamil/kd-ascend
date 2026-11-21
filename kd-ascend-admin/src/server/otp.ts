@@ -253,6 +253,31 @@ function testSmsCode(): string {
   return code;
 }
 
+/** "+92 330 2726254" → "+92•••••••254": shown on the code screen without revealing the number. */
+function maskPhone(phone: string): string {
+  const p = phone.replace(/\s+/g, '');
+  if (p.length <= 6) return p;
+  return `${p.slice(0, 3)}${'•'.repeat(Math.max(3, p.length - 6))}${p.slice(-3)}`;
+}
+
+/** SMS reset accepts { phone } (E.164) or { identifier } (email or phone). */
+function smsIdentifier(data: Record<string, unknown>): string {
+  const raw = typeof data.identifier === 'string' && data.identifier.trim()
+    ? requireString(data, 'identifier', 320)
+    : requireString(data, 'phone', 16);
+  const id = raw.trim();
+  if (!id.includes('@') && !isE164(id)) throw new FnError('invalid-argument', 'Please enter a valid email address or phone number.');
+  return id;
+}
+
+/** The account's phone: the one linked in Firebase Auth, else the number saved at sign-up. */
+async function accountPhone(user: UserRecord): Promise<string | null> {
+  if (user.phoneNumber) return user.phoneNumber;
+  const doc = await adminDb().collection('users').doc(user.uid).get();
+  const phone = doc.get('phone');
+  return typeof phone === 'string' && isE164(phone) ? phone : null;
+}
+
 type Handler = (data: Record<string, unknown>, uid: string | null) => Promise<unknown>;
 
 function requireAuth(uid: string | null) {
@@ -371,10 +396,16 @@ export const handlers: Record<string, Handler> = {
   /** TEST MODE: "sends" the fixed SMS code (nothing is sent). Same cooldown / lock rules as real codes. */
   async sendTestSmsResetCode(data) {
     const code = testSmsCode();
-    const phone = requireString(data, 'phone', 16);
-    if (!isE164(phone)) throw new FnError('invalid-argument', 'Please enter a valid phone number.');
-    const user = await findUser(phone);
-    if (!user) throw new FnError('not-found', 'No account found with this phone number.');
+    // The app sends the phone number, or the email when the user typed their email and picked SMS.
+    const identifier = smsIdentifier(data);
+    const user = await findUser(identifier);
+    if (!user) {
+      throw new FnError('not-found', `No account found with this ${identifier.includes('@') ? 'email' : 'phone number'}.`);
+    }
+    const phone = await accountPhone(user);
+    if (!phone) {
+      throw new FnError('failed-precondition', 'This account has no phone number. Please reset via email instead.');
+    }
     if (user.disabled) throw new FnError('permission-denied', 'This account has been disabled.');
     const ref = otpRef('reset_sms_test', user.uid);
     const now = Date.now();
@@ -385,7 +416,7 @@ export const handlers: Record<string, Handler> = {
       }
       if (cur?.lastSentAt && now - cur.lastSentAt.toMillis() < RESEND_COOLDOWN_S * 1000) {
         const left = Math.ceil((cur.lastSentAt.toMillis() + RESEND_COOLDOWN_S * 1000 - now) / 1000);
-        return { status: 'cooldown', destination: phone, retryAfterSeconds: left };
+        return { status: 'cooldown', destination: maskPhone(phone), retryAfterSeconds: left };
       }
       const salt = randomBytes(16).toString('hex');
       const doc: OtpDoc = {
@@ -399,16 +430,16 @@ export const handlers: Record<string, Handler> = {
         lastSentAt: Timestamp.fromMillis(now),
       };
       tx.set(ref, doc);
-      return { status: 'sent', destination: phone, cooldownSeconds: RESEND_COOLDOWN_S };
+      return { status: 'sent', destination: maskPhone(phone), cooldownSeconds: RESEND_COOLDOWN_S };
     });
   },
 
   /** TEST MODE: checks the fixed SMS code and returns a reset token (then resetPasswordWithToken). */
   async verifyTestSmsResetCode(data) {
     testSmsCode();
-    const phone = requireString(data, 'phone', 16);
+    const identifier = smsIdentifier(data);
     const code = requireCode(data);
-    const user = isE164(phone) ? await findUser(phone) : null;
+    const user = await findUser(identifier);
     if (!user) return { status: 'expired' } satisfies VerifyResult;
     const result = await checkCode('reset_sms_test', user.uid, code);
     if (result.status !== 'ok') return result;
